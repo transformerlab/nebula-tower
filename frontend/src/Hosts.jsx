@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Box, Button, Typography, Sheet, List, ListItem, Input, Table } from '@mui/joy';
+import ip6 from 'ip6'; // Import the ip6 library
+import { Box, Button, Typography, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
-import ip6 from 'ip6';
 
 
 function formatHostIP(ip) {
@@ -203,14 +203,6 @@ function Hosts() {
       {selectedOrg && (
         <Box sx={{ display: 'flex', gap: 4 }}>
           <Box sx={{ flex: 1 }}>
-            {/* <Button
-              variant="outlined"
-              size="sm"
-              sx={{ mb: 2 }}
-              onClick={() => setSelectedOrg('')}
-            >
-              &larr; Back to Organizations
-            </Button> */}
             <Typography level="h2" fontSize="1.3rem" mb={2}>
               Hosts in <b>{selectedOrg}</b>
               {selectedOrgSubnet && (
@@ -229,9 +221,9 @@ function Hosts() {
               {hosts.map((host, idx) => (
                 <tr
                   key={host.name + host.ip + idx}
-                  sx={{
+                  style={{
                     cursor: 'pointer',
-                    bgcolor: selectedHost === host.name ? 'primary.softBg' : undefined
+                    background: selectedHost === host.name ? '#f0f4ff' : undefined
                   }}
                   onClick={() => setSelectedHost(host.name)}
                 >
@@ -242,48 +234,60 @@ function Hosts() {
               ))}
             </Table>
           </Box>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            {selectedHost && (
-              <Box sx={{ borderLeft: '1px solid #eee', pl: 3 }}>
-                <Typography level="h2" fontSize="1.2rem" mb={2}>
-                  Host Details: <b>{selectedHost}</b>
-                </Typography>
-                {hostDetailsLoading && <Typography>Loading...</Typography>}
-                {hostDetailsError && <Typography color="danger">{hostDetailsError}</Typography>}
-                {hostDetails && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography level="body1"><b>Name:</b> {hostDetails.name}</Typography>
-                    {hostDetails.config && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography level="body2"><b>Config:</b></Typography>
-                        <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
-                          {JSON.stringify(hostDetails.config, null, 2)}
-                        </pre>
-                      </Box>
-                    )}
-                    {hostDetails.cert_crt && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography level="body2"><b>Certificate:</b></Typography>
-                        <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
-                          {hostDetails.cert_crt}
-                        </pre>
-                      </Box>
-                    )}
-                    {hostDetails.cert_key && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography level="body2"><b>Key (partial):</b></Typography>
-                        <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
-                          {hostDetails.cert_key.slice(0, 60)}...
-                        </pre>
-                      </Box>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            )}
-          </Box>
         </Box>
       )}
+
+      {/* Host Details Modal */}
+      <Modal open={!!selectedHost} onClose={() => setSelectedHost(null)}>
+        <ModalDialog sx={{ minWidth: 400, maxWidth: 600, overflow: 'auto' }}>
+          <ModalClose />
+          <Typography level="h2" fontSize="1.2rem" mb={2}>
+            Host Details: <b>{selectedHost}</b>
+          </Typography>
+          <Button
+            onClick={() => {
+              const downloadUrl = `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
+              window.open(downloadUrl, '_blank');
+            }}
+          >
+            Download all Host Config
+          </Button>
+          {hostDetailsLoading && <Typography>Loading...</Typography>}
+          {hostDetailsError && <Typography color="danger">{hostDetailsError}</Typography>}
+          {hostDetails && (
+            <Box sx={{ mb: 2 }}>
+              <Typography level="body1"><b>Name:</b> {hostDetails.name}</Typography>
+              {hostDetails.config && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography level="body2"><b>Config:</b></Typography>
+                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
+                    {JSON.stringify(hostDetails.config, null, 2)}
+                  </pre>
+                </Box>
+              )}
+              {hostDetails.cert_crt && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography level="body2"><b>Certificate:</b></Typography>
+                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
+                    {hostDetails.cert_crt}
+                  </pre>
+                </Box>
+              )}
+              {hostDetails.cert_key && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography level="body2"><b>Key (partial):</b></Typography>
+                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
+                    {hostDetails.cert_key.slice(0, 60)}...
+                  </pre>
+                </Box>
+              )}
+            </Box>
+          )}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button onClick={() => setSelectedHost(null)} variant="outlined">Close</Button>
+          </Box>
+        </ModalDialog>
+      </Modal>
     </Sheet>
   );
 }

@@ -123,7 +123,6 @@ export default function Cert() {
         </>
       )}
       {error && <Alert color="danger" sx={{ mt: 2 }}>{error}</Alert>}
-      <Button component={Link} to="/" sx={{ mt: 4 }}>Back to Home</Button>
     </Sheet>
   );
 }

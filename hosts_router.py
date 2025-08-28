@@ -7,6 +7,9 @@ from ipaddress import IPv6Network
 from nebula_api import NebulaAPI
 import shutil
 from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, SAFE_STRING_RE, IPV6_PREFIX, LIGHTHOUSE_IP, EXTERNAL_IP
+from fastapi.responses import StreamingResponse
+import io
+import zipfile
  
 router = APIRouter()
 
@@ -324,3 +327,32 @@ async def get_org_host(org_name: str, host_name: str):
             "cert_crt": cert_crt
         }
     }
+
+@router.get("/api/orgs/{org_name}/hosts/{host_name}/download")
+async def download_org_host_config(org_name: str, host_name: str):
+    org_name = sanitize_string(org_name)
+    host_name = sanitize_string(host_name)
+
+    if not os.path.exists(ORGS_DIR) or not os.path.isdir(ORGS_DIR):
+        raise HTTPException(status_code=404, detail="Org not found")
+
+    org_dir = os.path.join(ORGS_DIR, org_name)
+    if not os.path.isdir(org_dir):
+        raise HTTPException(status_code=404, detail="Org not found")
+
+    host_dir = os.path.join(org_dir, 'hosts', host_name)
+    if not os.path.isdir(host_dir):
+        raise HTTPException(status_code=404, detail="Host not found")
+
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for fname in ["config.yaml", "host.crt", "host.key", "ca.crt"]:
+            fpath = os.path.join(host_dir, fname)
+            if os.path.exists(fpath):
+                arcname = f"{fname}"
+                with open(fpath, "rb") as f:
+                    zf.writestr(arcname, f.read())
+    mem_zip.seek(0)
+    return StreamingResponse(mem_zip, media_type="application/zip", headers={
+        "Content-Disposition": f"attachment; filename={org_name}_{host_name}_config.zip"
+    })
