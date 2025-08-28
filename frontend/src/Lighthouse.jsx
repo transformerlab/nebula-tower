@@ -31,7 +31,7 @@ export default function Lighthouse() {
   }, []);
 
   return (
-    <Sheet sx={{ minWidth: 700, mx: 'auto', my: 4, p: 4 }}>
+    <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>Lighthouse Config</Typography>
       {loading ? <CircularProgress /> : (
         config === null ? (

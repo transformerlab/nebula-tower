@@ -14,7 +14,7 @@ function Sidebar() {
     { label: 'Cert', to: '/cert', icon: <Shield size={20} /> },
   ];
   return (
-    <Sheet variant="outlined" sx={{ width: 200, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider' }}>
+    <Sheet variant="outlined" sx={{ width: 200, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4">Nebula</Typography>
       <List>
         {navItems.map(item => (
@@ -34,7 +34,7 @@ function MainLayout({ children }) {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-      <Box sx={{ flex: 1 }}>{children}</Box>
+      <Sheet sx={{ flex: 1, pl: 2 }}>{children}</Sheet>
     </Box>
   );
 }

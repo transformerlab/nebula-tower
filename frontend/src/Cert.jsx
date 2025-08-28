@@ -69,13 +69,13 @@ export default function Cert() {
   };
 
   return (
-    <Sheet sx={{ maxWidth: 600, mx: 'auto', my: 4, p: 4 }}>
+    <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate Manager</Typography>
-      <Button onClick={fetchCert} sx={{ mb: 2 }}>Refresh CA Cert</Button>
+      <Button onClick={fetchCert} sx={{ mb: 2 }}>Refresh</Button>
       {loading ? <CircularProgress /> : (
         <>
           {cert ? (
-            <Box className="cert-box" sx={{ background: '#f4f4f4', p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
+            <Box className="cert-box" sx={{ p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
               <Typography level="h3">CA Certificate</Typography>
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{cert}</pre>
               <Typography><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
