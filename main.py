@@ -11,4 +11,4 @@ if not os.path.exists(env_path):
 load_dotenv(env_path)
 
 if __name__ == "__main__":
-    uvicorn.run("cert_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

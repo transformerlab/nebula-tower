@@ -59,16 +59,6 @@ export default function Lighthouse() {
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>Lighthouse Config</Typography>
-      <Button
-        color="danger"
-        variant="solid"
-        onClick={handleRecreate}
-        loading={recreateLoading}
-        sx={{ mb: 2 }}
-      >
-        Recreate lighthouse config and certs
-      </Button>
-      {recreateError && <Alert color="danger" sx={{ mb: 2 }}>{recreateError}</Alert>}
       {loading ? <CircularProgress /> : (
         <Box>
           {isMissingConfig && (
@@ -95,6 +85,16 @@ export default function Lighthouse() {
         </Box>
       )}
       {error && <Alert color="danger" sx={{ mt: 2 }}>{error}</Alert>}
+      <Button
+        color="danger"
+        variant="solid"
+        onClick={handleRecreate}
+        loading={recreateLoading}
+        sx={{ mb: 2 }}
+      >
+        Recreate lighthouse config and certs
+      </Button>
+      {recreateError && <Alert color="danger" sx={{ mb: 2 }}>{recreateError}</Alert>}
     </Sheet>
   );
 }

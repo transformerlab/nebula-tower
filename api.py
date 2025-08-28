@@ -7,9 +7,9 @@ from nebula_api import NebulaAPI
 
 
 # Import the hosts router
-from hosts import router as hosts_router
+from hosts_router import router as hosts_router
 from lighthouse_router import router as lighthouse_router
-
+from nebula_process_router import router as nebula_process_router
 
 
 # Use FastAPI lifespan event for startup config
@@ -22,6 +22,7 @@ app = FastAPI(lifespan=lifespan)
 # Include the hosts router
 app.include_router(hosts_router)
 app.include_router(lighthouse_router)
+app.include_router(nebula_process_router)
 
 # Allow CORS for all origins (for development)
 app.add_middleware(

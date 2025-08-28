@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 import os
 import yaml
 import shutil
@@ -42,6 +42,7 @@ def get_all_configs():
 @router.post("/api/lighthouse/create_config")
 def create_lighthouse_config():
     config_init_lighthouse()
+    create_lighthouse_certs()
     return {"status": "success"}
 
 def config_init_lighthouse():
@@ -71,9 +72,13 @@ def config_init_lighthouse():
     config['lighthouse'] = {'am_lighthouse': True}
     if 'static_host_map' in config and isinstance(config['static_host_map'], dict):
         config['static_host_map'] = {}
+    config['pki'] = {
+        'ca': './data/lighthouse/ca.crt',
+        'cert': './data/lighthouse/host.crt',
+        'key': './data/lighthouse/host.key'
+    }
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
-    create_lighthouse_certs()
 
 def create_lighthouse_certs():
     print("Creating certificates for lighthouse")

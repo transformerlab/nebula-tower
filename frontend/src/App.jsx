@@ -1,10 +1,11 @@
 
-import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator } from '@mui/joy';
+import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator, Card } from '@mui/joy';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Cert from './Cert';
 import Hosts from './Hosts';
 import { Shield, HomeIcon, Server, TowerControlIcon } from 'lucide-react';
 import Lighthouse from './Lighthouse';
+import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 
 function Sidebar() {
   const location = useLocation();
@@ -14,8 +15,9 @@ function Sidebar() {
     { label: 'Cert', to: '/cert', icon: <Shield size={20} /> },
   ];
   return (
-    <Sheet variant="outlined" sx={{ width: 200, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
+    <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4">Nebula</Typography>
+      <NebulaProcessStatusCard />
       <List>
         {navItems.map(item => (
           <ListItem key={item.to} selected={location.pathname === item.to}>

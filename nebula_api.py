@@ -1,10 +1,17 @@
 import subprocess
+import threading
+import signal
+import os
 from typing import Optional, Dict, Any
 
 class NebulaAPI:
     def __init__(self, nebula_path: str = './nebula', cert_path: str = './nebula-cert'):
         self.nebula_path = nebula_path
         self.cert_path = cert_path
+        self._nebula_proc: Optional[subprocess.Popen] = None
+        self._nebula_proc_lock = threading.Lock()
+        self._nebula_proc_monitor: Optional[threading.Thread] = None
+        self._nebula_proc_status: Optional[int] = None  # None=running, int=exit code
 
     def nebula_version(self) -> str:
         return self._run([self.nebula_path, '-version'])
@@ -84,6 +91,61 @@ class NebulaAPI:
         if subnets:
             cmd += ["-subnets", subnets]
         return self._run(cmd)
+
+    def run_nebula_tracked(self, config_path: str) -> None:
+        """
+        Run nebula as a tracked background process.
+        """
+        with self._nebula_proc_lock:
+            if self._nebula_proc and self._nebula_proc.poll() is None:
+                raise RuntimeError("Nebula process already running")
+            cmd = [self.nebula_path, '-config', config_path]
+            self._nebula_proc = subprocess.Popen(cmd)
+            self._nebula_proc_status = None
+            self._nebula_proc_monitor = threading.Thread(target=self._monitor_nebula_proc, daemon=True)
+            self._nebula_proc_monitor.start()
+
+    def stop_nebula_tracked(self) -> None:
+        """
+        Stop the tracked nebula process if running.
+        """
+        with self._nebula_proc_lock:
+            if self._nebula_proc and self._nebula_proc.poll() is None:
+                self._nebula_proc.terminate()
+                try:
+                    self._nebula_proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    self._nebula_proc.kill()
+            self._nebula_proc = None
+            self._nebula_proc_status = None
+
+    def nebula_tracked_status(self) -> Optional[int]:
+        """
+        Returns None if running, or the exit code if stopped.
+        """
+        with self._nebula_proc_lock:
+            if self._nebula_proc is None:
+                return None
+            ret = self._nebula_proc.poll()
+            if ret is not None:
+                self._nebula_proc_status = ret
+            return self._nebula_proc_status
+
+    def _monitor_nebula_proc(self):
+        """
+        Monitor the nebula process and clean up if it exits.
+        """
+        proc = self._nebula_proc
+        if proc is None:
+            return
+        ret = proc.wait()
+        with self._nebula_proc_lock:
+            self._nebula_proc_status = ret
+            self._nebula_proc = None
+
+    def __del__(self):
+        # Ensure nebula process is stopped on object deletion
+        self.stop_nebula_tracked()
 
     def _run(self, cmd: list) -> str:
         try:
