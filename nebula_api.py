@@ -34,11 +34,11 @@ class NebulaAPI:
         self,
         name: str,
         networks: str,
-        groups: str,
         out_crt: str,
         out_key: str,
         ca_crt: str = "ca.crt",
         ca_key: str = "ca.key",
+        groups: str = None,
         duration: str = None,
         in_pub: str = None,
         out_qr: str = None,
@@ -67,13 +67,14 @@ class NebulaAPI:
             self.cert_path, "sign",
             "-name", name,
             "-networks", networks,
-            "-groups", groups,
             "-out-crt", out_crt,
             "-out-key", out_key,
             "-ca-crt", ca_crt,
             "-ca-key", ca_key,
             "-version", "2",
         ]
+        if groups:
+            cmd += ["-groups", groups]
         if duration:
             cmd += ["-duration", duration]
         if in_pub:

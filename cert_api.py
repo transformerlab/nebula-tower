@@ -8,6 +8,8 @@ import os
 import shutil
 import yaml
 from nebula_api import NebulaAPI
+from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, SAFE_STRING_RE, IPV6_PREFIX, LIGHTHOUSE_IP, EXTERNAL_IP
+
 
 # Import the hosts router
 from hosts import router as hosts_router
@@ -17,7 +19,6 @@ from hosts import router as hosts_router
 # Use FastAPI lifespan event for startup config
 @asynccontextmanager
 async def lifespan(app):
-    config_init()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -88,22 +89,54 @@ def get_ca_cert_info():
     info = nebula.cert_mode("print", ["-json", "-path", cert_path])
     return {"info": info}
 
-@app.get("/api/config/lighthouse")
-def get_lighthouse_config():
-    path = "./data/lighthouse.yaml"
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Lighthouse config not found.")
-    return FileResponse(path, media_type="text/yaml")
+@app.get("/api/lighthouse/config")
+def get_all_configs():
+    lighthouse_path = "./data/lighthouse/config.yaml"
+    ca_cert_path = "./data/lighthouse/ca.crt"
+    host_cert_path = "./data/lighthouse/host.crt"
+    host_key_path = "./data/lighthouse/host.key"
 
+    configs = {}
 
-def config_init():
+    if os.path.exists(lighthouse_path):
+        with open(lighthouse_path, "r") as f:
+            configs["config"] = f.read()
+    else:
+        configs["config"] = None
+
+    if os.path.exists(ca_cert_path):
+        with open(ca_cert_path, "r") as f:
+            configs["ca_cert"] = f.read()
+    else:
+        configs["ca_cert"] = None
+
+    if os.path.exists(host_cert_path) and os.path.exists(host_key_path):
+        with open(host_cert_path, "r") as cert_file, open(host_key_path, "r") as key_file:
+            configs["host_cert"] = cert_file.read()
+            key_content = key_file.read()
+            configs["host_key"] = key_content[:48] + "..." + key_content[-5:]  # Hide most of the key
+    else:
+        configs["host_cert"] = None
+        configs["host_key"] = None
+
+    return configs
+
+@app.post("/api/lighthouse/create_config")
+def create_lighthouse_config():
+    config_init_lighthouse()
+    return {"status": "success"}
+
+def config_init_lighthouse():
     data_dir = './data'
-    config_path = os.path.join(data_dir, 'lighthouse.yaml')
+    lighthouse_dir = os.path.join(data_dir, "lighthouse")
+    config_path = os.path.join(lighthouse_dir, "config.yaml")
     example_path = './config.yml.example'
     if not os.path.exists(data_dir):
         print("Creating data directory")
         os.makedirs(data_dir)
-
+    if not os.path.exists(lighthouse_dir):
+        print("Creating lighthouse directory")
+        os.makedirs(lighthouse_dir)
     # check if LIGHTHOUSE_PUBLIC_IP is set and is a number:
     import ipaddress
 
@@ -129,3 +162,42 @@ def config_init():
         config['static_host_map'] = {}
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
+
+    create_lighthouse_certs()
+
+
+def create_lighthouse_certs():
+    print("Creating certificates for lighthouse")
+    
+    # Check if data/lighthouse exists, if not create it:
+    lighthouse_dir = "./data/lighthouse"
+    os.makedirs(lighthouse_dir, exist_ok=True)
+    print(f"Lighthouse directory created or exists: {lighthouse_dir}")
+
+    out_crt = os.path.join(lighthouse_dir, "host.crt")
+    out_key = os.path.join(lighthouse_dir, "host.key")
+    print(f"Output certificate path: {out_crt}, Output key path: {out_key}")
+
+    # Optionally, you can set ca_crt and ca_key to org-specific CA if needed
+    ca_crt = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.crt")
+    ca_key = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.key")
+    print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
+
+    # Use the required format for networks: "<ip>/64"
+    networks = f"{LIGHTHOUSE_IP}/64"
+
+    nebula = NebulaAPI()
+    print("Signing certificate with NebulaAPI...")
+    result = nebula.sign_cert(
+        name="lighthouse1",
+        networks=networks,
+        out_crt=out_crt,
+        out_key=out_key,
+        ca_crt=ca_crt,
+        ca_key=ca_key,
+    )
+
+    # Also copy ca.crt to host directory:
+    ca_crt_dest = os.path.join(lighthouse_dir, "ca.crt")
+    if not os.path.exists(ca_crt_dest):
+        shutil.copy(ca_crt, ca_crt_dest)
