@@ -24,11 +24,19 @@ export default function Cert() {
         const infoRes = await fetch(`${API_BASE_URL}/api/ca/info`);
         if (infoRes.ok) {
           const infoData = await infoRes.json();
-          let parsed = null;
+          let parsedArr = null;
           try {
-            parsed = typeof infoData.info === 'string' ? JSON.parse(infoData.info) : infoData.info;
-          } catch (e) { }
-          setCertInfo(parsed);
+            // infoData.info may be a stringified array or an array
+            if (typeof infoData.info === 'string') {
+              parsedArr = JSON.parse(infoData.info);
+            } else {
+              parsedArr = infoData.info;
+            }
+          } catch (e) {
+            parsedArr = null;
+          }
+          // Use the first cert info object if available
+          setCertInfo(Array.isArray(parsedArr) && parsedArr.length > 0 ? parsedArr[0] : null);
         } else {
           setCertInfo(null);
         }
@@ -78,7 +86,7 @@ export default function Cert() {
             <Box className="cert-box" sx={{ p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
               <Typography level="h3">CA Certificate</Typography>
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{cert}</pre>
-              <Typography><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
+              <Typography level="h4"><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
               {certInfo && certInfo.details && (
                 <Box sx={{ mt: 2 }}>
                   <Typography level="h4">Certificate Info</Typography>
@@ -86,10 +94,10 @@ export default function Cert() {
                     <li><b>Name:</b> {certInfo.details.name}</li>
                     <li><b>Is CA:</b> {certInfo.details.isCa ? 'Yes' : 'No'}</li>
                     <li><b>Issuer:</b> {certInfo.details.issuer || '-'}</li>
-                    <li><b>Curve:</b> {certInfo.details.curve}</li>
+                    <li><b>Curve:</b> {certInfo.curve}</li>
                     <li><b>Valid From:</b> {certInfo.details.notBefore}</li>
                     <li><b>Valid To:</b> {certInfo.details.notAfter}</li>
-                    <li><b>Public Key:</b> <code>{certInfo.details.publicKey}</code></li>
+                    <li><b>Public Key:</b> <code>{certInfo.publicKey}</code></li>
                     <li><b>Fingerprint:</b> <code>{certInfo.fingerprint}</code></li>
                     <li><b>Signature:</b> <code>{certInfo.signature}</code></li>
                   </ul>
@@ -99,7 +107,7 @@ export default function Cert() {
           ) : (
             <Box>
               <Typography>No CA certificate found.</Typography>
-              <Typography><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
+              <Typography level="h2"><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
               <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
                 <Input
                   placeholder="Organization Name"
