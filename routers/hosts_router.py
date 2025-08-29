@@ -40,6 +40,38 @@ def create_host_config(org, name):
         'hosts': [LIGHTHOUSE_IP]
     }
 
+    # Set firewall section as specified
+    config['firewall'] = {
+        "conntrack": {
+            "default_timeout": "10m",
+            "tcp_timeout": "12m",
+            "udp_timeout": "3m"
+        },
+        "inbound": [
+            {
+                "groups": ["orggroup"],
+                "port": "any",
+                "proto": "any"
+            }
+        ],
+        "inbound_action": "drop",
+        "outbound": [
+            {
+                "host": "any",
+                "port": "any",
+                "proto": "any"
+            }
+        ],
+        "outbound_action": "drop"
+    }
+
+    # Tell the config that the keys and certs are in the same location
+    config['pki'] = {
+        "ca": "./ca.crt",
+        "cert": "./host.crt",
+        "key": "./host.key"
+    }
+
     save_yaml(config_file, config)
     print(f"Host config saved to: {config_file}")
 
@@ -375,4 +407,4 @@ async def download_org_host_config_plain(org_name: str, host_name: str):
 
     config_file = os.path.join(host_dir, 'config.yaml')
 
-    return FileResponse(config_file, media_type='application/x-yaml', filename=f"{org_name}_{host_name}_config.yaml")   
+    return FileResponse(config_file, media_type='application/x-yaml', filename=f"{org_name}_{host_name}_config.yaml")

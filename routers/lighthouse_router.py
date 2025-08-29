@@ -9,10 +9,10 @@ router = APIRouter()
 
 @router.get("/api/lighthouse/config")
 def get_all_configs():
-    lighthouse_path = "./data/lighthouse/config.yaml"
-    ca_cert_path = "./data/lighthouse/ca.crt"
-    host_cert_path = "./data/lighthouse/host.crt"
-    host_key_path = "./data/lighthouse/host.key"
+    lighthouse_path = "data/lighthouse/config.yaml"
+    ca_cert_path = "data/lighthouse/ca.crt"
+    host_cert_path = "data/lighthouse/host.crt"
+    host_key_path = "data/lighthouse/host.key"
 
     configs = {}
 
@@ -46,10 +46,10 @@ def create_lighthouse_config():
     return {"status": "success"}
 
 def config_init_lighthouse():
-    data_dir = './data'
+    data_dir = 'data'
     lighthouse_dir = os.path.join(data_dir, "lighthouse")
     config_path = os.path.join(lighthouse_dir, "config.yaml")
-    example_path = './config.yml.example'
+    example_path = 'config.yml.example'
     if not os.path.exists(data_dir):
         print("Creating data directory")
         os.makedirs(data_dir)
@@ -70,8 +70,23 @@ def config_init_lighthouse():
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f)
     config['lighthouse'] = {'am_lighthouse': True}
-    if 'static_host_map' in config and isinstance(config['static_host_map'], dict):
-        config['static_host_map'] = {}
+    config['static_host_map'] = {}
+    config['firewall'] = {
+        "conntrack": {
+            "default_timeout": "10m",
+            "tcp_timeout": "12m",
+            "udp_timeout": "3m"
+        },
+        "inbound_action": "drop",
+        "outbound": [
+            {
+                "host": "any",
+                "port": "any",
+                "proto": "any"
+            }
+        ],
+        "outbound_action": "drop"
+    }
     config['pki'] = {
         'ca': './data/lighthouse/ca.crt',
         'cert': './data/lighthouse/host.crt',
@@ -82,14 +97,15 @@ def config_init_lighthouse():
 
 def create_lighthouse_certs():
     print("Creating certificates for lighthouse")
-    lighthouse_dir = "./data/lighthouse"
+    lighthouse_dir = "data/lighthouse"
     os.makedirs(lighthouse_dir, exist_ok=True)
     print(f"Lighthouse directory created or exists: {lighthouse_dir}")
     out_crt = os.path.join(lighthouse_dir, "host.crt")
     out_key = os.path.join(lighthouse_dir, "host.key")
     print(f"Output certificate path: {out_crt}, Output key path: {out_key}")
-    ca_crt = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.crt")
-    ca_key = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.key")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    ca_crt = os.path.join(project_root, "data", "certs", "ca.crt")
+    ca_key = os.path.join(project_root, "data", "certs", "ca.key")
     print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
     networks = f"{LIGHTHOUSE_IP}/64"
     nebula = NebulaAPI()

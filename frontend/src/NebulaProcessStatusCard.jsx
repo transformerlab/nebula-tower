@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 const fetcher = url => fetch(url).then(res => res.json());
 
-function NebulaProcessStatusCard() {
+function NebulaProcessStatusCard({ disableButtons = false }) {
     const { data, mutate, isLoading } = useSWR(
         `${API_BASE_URL}/api/nebula_process/status`,
         fetcher,
@@ -63,12 +63,12 @@ function NebulaProcessStatusCard() {
             Lighthouse
             {/* Nebula {status === null ? "Loading..." : status} */}
             {status === "stopped" && (
-                <IconButton onClick={handleStart} disabled={loading} sx={{ ml: 1 }}>
+                <IconButton onClick={handleStart} disabled={loading || disableButtons} sx={{ ml: 1 }} >
                     <PlayCircle />
                 </IconButton>
             )}
             {status === "running" && (
-                <IconButton onClick={handleStop} disabled={loading} sx={{ ml: 1 }}>
+                <IconButton onClick={handleStop} disabled={loading} sx={{ ml: 1 }} >
                     <StopCircle />
                 </IconButton>
             )}

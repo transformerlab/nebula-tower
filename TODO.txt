@@ -5,6 +5,8 @@ TODO:
 - Move binaries to their own directory
 - Write a script to get the right binaries for a specific system
 - Build frontend in a way that the backend can load it as static
+- Give each org a different CA
+- How do we handle that central certs expire in a year. Can we refresh hosts in a nice way?
 
 Nice to have:
 ---

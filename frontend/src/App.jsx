@@ -28,7 +28,7 @@ function Sidebar() {
   return (
     <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4">Nebula</Typography>
-      <NebulaProcessStatusCard />
+      <NebulaProcessStatusCard disableButtons={!lighthouseConfigExists} />
       {/* {certExists && <Typography level="body2">CA Certificate exists</Typography>}
       {lighthouseConfigExists && <Typography level="body2">Lighthouse config exists</Typography>} */}
       <List>
@@ -57,7 +57,10 @@ function MainLayout({ children }) {
 function Home() {
   return (
     <Sheet>
-      <img src="/tower.png" alt="Tower" width="100%" />
+      <Typography level="h2" mt={3}>Nebula Tower</Typography>
+      <Box sx={{ border: '10px solid #999', m: 4 }}>
+        <img src="/tower.png" alt="Tower" width="100%" />
+      </Box>
     </Sheet>
   );
 }
