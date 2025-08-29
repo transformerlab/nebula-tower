@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
 import { Box, Button, Typography, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
 
+const fetcher = url => fetch(url).then(res => res.json());
 
 function formatHostIP(ip) {
   try {
@@ -48,61 +50,42 @@ function formatHostIP(ip) {
 }
 
 function Hosts() {
-  const [orgs, setOrgs] = useState([]);
   const [selectedOrg, setSelectedOrg] = useState('');
-  const [selectedOrgSubnet, setSelectedOrgSubnet] = useState('');
-  const [hosts, setHosts] = useState([]);
+  const [hostsFilter, setHostsFilter] = useState(''); // not used, but for future
   const [name, setName] = useState('');
   const [tags, setTags] = useState(''); // comma separated
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedHost, setSelectedHost] = useState(null);
-  const [hostDetails, setHostDetails] = useState(null);
-  const [hostDetailsLoading, setHostDetailsLoading] = useState(false);
-  const [hostDetailsError, setHostDetailsError] = useState('');
   const [newOrgName, setNewOrgName] = useState('');
   const [orgCreateError, setOrgCreateError] = useState('');
   const [orgCreateLoading, setOrgCreateLoading] = useState(false);
 
-  // Fetch orgs on mount
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/orgs`)
-      .then(res => res.json())
-      .then(data => setOrgs(data.orgs || []));
-  }, []);
+  // SWR for orgs
+  const { data: orgsData, error: orgsError, isLoading: orgsLoading } = useSWR(
+    `${API_BASE_URL}/api/orgs`,
+    fetcher
+  );
+  const orgs = orgsData?.orgs || [];
 
-  // Fetch hosts for selected org
-  useEffect(() => {
-    if (!selectedOrg) {
-      setHosts([]);
-      setSelectedOrgSubnet('');
-      return;
-    }
-    fetch(`${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts`)
-      .then(res => res.json())
-      .then(data => setHosts(data.hosts || []));
-    // Find and set subnet for selected org
-    const orgObj = orgs.find(o => o.name === selectedOrg);
-    setSelectedOrgSubnet(orgObj ? orgObj.subnet : '');
-  }, [selectedOrg, orgs]);
+  // Find and set subnet for selected org
+  const selectedOrgSubnet = orgs.find(o => o.name === selectedOrg)?.subnet || '';
 
-  // Fetch host details when selectedHost changes
-  useEffect(() => {
-    if (!selectedHost) {
-      setHostDetails(null);
-      setHostDetailsError('');
-      return;
-    }
-    setHostDetailsLoading(true);
-    setHostDetailsError('');
-    fetch(`${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`)
-      .then(res => res.json())
-      .then(data => {
-        setHostDetails(data.host || null);
-      })
-      .catch(e => setHostDetailsError('Failed to load host details'))
-      .finally(() => setHostDetailsLoading(false));
-  }, [selectedHost, selectedOrg]);
+  // SWR for hosts in selected org
+  const { data: hostsData, error: hostsError, isLoading: hostsLoading } = useSWR(
+    selectedOrg ? `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts` : null,
+    fetcher
+  );
+  const hosts = hostsData?.hosts || [];
+
+  // SWR for host details
+  const { data: hostDetailsData, error: hostDetailsError, isLoading: hostDetailsLoading } = useSWR(
+    selectedHost && selectedOrg
+      ? `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
+      : null,
+    fetcher
+  );
+  const hostDetails = hostDetailsData?.host || null;
 
   const handleAdd = async () => {
     setError('');
@@ -123,7 +106,7 @@ function Hosts() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Failed to add host');
-      setHosts(hs => [...hs, { ...data.host, org: selectedOrg }]);
+      mutate(`${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts`);
       setName('');
       setTags('');
     } catch (e) {
@@ -149,10 +132,7 @@ function Hosts() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Failed to create org');
       setNewOrgName('');
-      // Refresh orgs list
-      const orgsResp = await fetch(`${API_BASE_URL}/api/orgs`);
-      const orgsData = await orgsResp.json();
-      setOrgs(orgsData.orgs || []);
+      mutate(`${API_BASE_URL}/api/orgs`);
     } catch (e) {
       setOrgCreateError(e.message);
     } finally {
@@ -253,7 +233,7 @@ function Hosts() {
             Download all Host Config
           </Button>
           {hostDetailsLoading && <Typography>Loading...</Typography>}
-          {hostDetailsError && <Typography color="danger">{hostDetailsError}</Typography>}
+          {hostDetailsError && <Typography color="danger">{hostDetailsError.message || hostDetailsError}</Typography>}
           {hostDetails && (
             <Box sx={{ mb: 2 }}>
               <Typography level="body1"><b>Name:</b> {hostDetails.name}</Typography>

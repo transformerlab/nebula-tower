@@ -55,12 +55,18 @@ class CreateCARequest(BaseModel):
         key_content = None
 
         if cert_exists:
-            with open(cert_path, "r") as f:
-                cert_content = f.read()
+            try:
+                with open(cert_path, "r") as f:
+                    cert_content = f.read()
+            except PermissionError:
+                raise HTTPException(status_code=403, detail="Permission denied when accessing the certificate file.")
         
         if key_exists:
-            with open(key_path, "r") as f:
-                key_content = f.read()[:32]  # Only show the first 32 characters of the key
+            try:
+                with open(key_path, "r") as f:
+                    key_content = f.read()[:32]  # Only show the first 32 characters of the key
+            except PermissionError:
+                raise HTTPException(status_code=403, detail="Permission denied when accessing the key file.")
         
         return {"exists": cert_exists, "cert": cert_content, "key_exists": key_exists, "key": key_content}
 

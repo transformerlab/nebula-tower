@@ -1,0 +1,28 @@
+
+
+TODO:
+---
+- Move binaries to their own directory
+- Write a script to get the right binaries for a specific system
+- Build frontend in a way that the backend can load it as static
+
+Nice to have:
+---
+- Backup main certs if user replaces them
+- Delete Host key once downloaded
+
+Questions:
+---
+- How do we clean up old hosts?
+
+
+Info on Multiple CAs:
+---
+Can we use multiple CAs:
+
+Each host is only signed by one CA, but can trust multiple CAs for connecting to it.
+So for example, you could have a different CA for each org: Product, Security, IT.
+Laptops get signed by the IT CA, Lighthouse gets signed by the Security CA, Web hosts get signed by the Product CA. This could help you isolate the signing permissions of these CAs (edited) 
+
+9:50
+Then for firewall rules, maybe you have a special case where you want to only allow access to hosts with the “ssh_bastion” group and signed by the Security CA, you can do that with those rules you mentioned (edited) 

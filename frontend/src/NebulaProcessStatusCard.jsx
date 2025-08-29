@@ -1,38 +1,26 @@
 import { Sheet, Card, Box, IconButton } from "@mui/joy"
-import { useEffect, useState } from "react"
+import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import { PlayCircle, StopCircle } from "lucide-react";
+import { useState } from 'react';
+
+
+const fetcher = url => fetch(url).then(res => res.json());
 
 function NebulaProcessStatusCard() {
-    const [status, setStatus] = useState(null)
+    const { data, mutate, isLoading } = useSWR(
+        `${API_BASE_URL}/api/nebula_process/status`,
+        fetcher,
+        { refreshInterval: 1500 }
+    );
+    const status = data?.status ?? (data ? JSON.stringify(data) : null);
     const [loading, setLoading] = useState(false);
-
-    const fetchStatus = async (isMounted = true) => {
-        try {
-            const infoRes = await fetch(`${API_BASE_URL}/api/nebula_process/status`)
-            if (!infoRes.ok) return
-            const data = await infoRes.json()
-            if (isMounted) setStatus(data.status ?? JSON.stringify(data))
-        } catch (e) {
-            if (isMounted) setStatus("Error")
-        }
-    }
-
-    useEffect(() => {
-        let isMounted = true
-        fetchStatus(isMounted)
-        const interval = setInterval(() => fetchStatus(isMounted), 1500)
-        return () => {
-            isMounted = false
-            clearInterval(interval)
-        }
-    }, [])
 
     const handleStart = async () => {
         setLoading(true)
         try {
             await fetch(`${API_BASE_URL}/api/nebula_process/start`, { method: "POST" })
-            // status will auto-refresh
+            mutate();
         } finally {
             setLoading(false)
         }
@@ -42,7 +30,7 @@ function NebulaProcessStatusCard() {
         setLoading(true)
         try {
             await fetch(`${API_BASE_URL}/api/nebula_process/stop`, { method: "POST" })
-            // status will auto-refresh
+            mutate();
         } finally {
             setLoading(false)
         }

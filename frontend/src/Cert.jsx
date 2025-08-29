@@ -1,57 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import { Box, Button, Input, Typography, Sheet, CircularProgress, Alert } from '@mui/joy';
 import { Link } from 'react-router-dom';
+
+const fetcher = url => fetch(url).then(res => res.json());
+
 export default function Cert() {
-  const [loading, setLoading] = useState(true);
-  const [cert, setCert] = useState(null);
-  const [keyExists, setKeyExists] = useState(false);
-  const [certInfo, setCertInfo] = useState(null);
-  const [error, setError] = useState(null);
   const [orgName, setOrgName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState(null);
 
-  const fetchCert = async () => {
-    setLoading(true);
-    setError(null);
+  // SWR for CA cert
+  const { data: caData, error: caError, isLoading: caLoading } = useSWR(
+    `${API_BASE_URL}/api/ca`,
+    fetcher
+  );
+
+  // SWR for CA info (only fetch if CA exists)
+  const shouldFetchInfo = caData && caData.exists;
+  const { data: infoData, error: infoError, isLoading: infoLoading } = useSWR(
+    shouldFetchInfo ? `${API_BASE_URL}/api/ca/info` : null,
+    fetcher
+  );
+
+  // Parse certInfo
+  let certInfo = null;
+  if (infoData && infoData.info) {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ca`);
-      const data = await res.json();
-      setCert(data.cert);
-      setKeyExists(data.key_exists);
-      if (data.exists) {
-        // Fetch cert info
-        const infoRes = await fetch(`${API_BASE_URL}/api/ca/info`);
-        if (infoRes.ok) {
-          const infoData = await infoRes.json();
-          let parsedArr = null;
-          try {
-            // infoData.info may be a stringified array or an array
-            if (typeof infoData.info === 'string') {
-              parsedArr = JSON.parse(infoData.info);
-            } else {
-              parsedArr = infoData.info;
-            }
-          } catch (e) {
-            parsedArr = null;
-          }
-          // Use the first cert info object if available
-          setCertInfo(Array.isArray(parsedArr) && parsedArr.length > 0 ? parsedArr[0] : null);
-        } else {
-          setCertInfo(null);
-        }
-      } else {
-        setCertInfo(null);
-      }
+      let parsedArr = typeof infoData.info === 'string'
+        ? JSON.parse(infoData.info)
+        : infoData.info;
+      certInfo = Array.isArray(parsedArr) && parsedArr.length > 0 ? parsedArr[0] : null;
     } catch (e) {
-      setError('Failed to load certificate info.');
+      certInfo = null;
     }
-    setLoading(false);
-  };
+  }
 
-  useEffect(() => {
-    fetchCert();
-  }, []);
+  const handleRefresh = () => {
+    mutate(`${API_BASE_URL}/api/ca`);
+    if (shouldFetchInfo) mutate(`${API_BASE_URL}/api/ca/info`);
+  };
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -65,7 +54,8 @@ export default function Cert() {
       });
       if (res.ok) {
         setOrgName('');
-        fetchCert();
+        mutate(`${API_BASE_URL}/api/ca`);
+        mutate(`${API_BASE_URL}/api/ca/info`);
       } else {
         const err = await res.json();
         setError(err.detail || 'Failed to create CA cert.');
@@ -76,17 +66,19 @@ export default function Cert() {
     setCreating(false);
   };
 
+  const loading = caLoading || (shouldFetchInfo && infoLoading);
+
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate Manager</Typography>
-      <Button onClick={fetchCert} sx={{ mb: 2 }}>Refresh</Button>
+      <Button onClick={handleRefresh} sx={{ mb: 2 }}>Refresh</Button>
       {loading ? <CircularProgress /> : (
         <>
-          {cert ? (
+          {caData && caData.cert ? (
             <Box className="cert-box" sx={{ p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
               <Typography level="h3">CA Certificate</Typography>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{cert}</pre>
-              <Typography level="h4"><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData.cert}</pre>
+              <Typography level="h4"><b>CA Key:</b> {caData.key_exists ? 'Exists' : 'Not found'}</Typography>
               {certInfo && certInfo.details && (
                 <Box sx={{ mt: 2 }}>
                   <Typography level="h4">Certificate Info</Typography>
@@ -107,7 +99,7 @@ export default function Cert() {
           ) : (
             <Box>
               <Typography>No CA certificate found.</Typography>
-              <Typography level="h2"><b>CA Key:</b> {keyExists ? 'Exists' : 'Not found'}</Typography>
+              <Typography level="h2"><b>CA Key:</b> {caData && caData.key_exists ? 'Exists' : 'Not found'}</Typography>
               <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
                 <Input
                   placeholder="Organization Name"
@@ -122,7 +114,11 @@ export default function Cert() {
           )}
         </>
       )}
-      {error && <Alert color="danger" sx={{ mt: 2 }}>{error}</Alert>}
+      {(error || caError || infoError) && (
+        <Alert color="danger" sx={{ mt: 2 }}>
+          {error || caError?.message || infoError?.message || 'Failed to load certificate info.'}
+        </Alert>
+      )}
     </Sheet>
   );
 }

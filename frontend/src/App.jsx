@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import useSWR from 'swr';
 import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator, Card } from '@mui/joy';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Cert from './Cert';
@@ -8,32 +9,22 @@ import Lighthouse from './Lighthouse';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
 
+const fetcher = url => fetch(url).then(res => res.json());
 
 function Sidebar() {
-  const [certExists, setCertExists] = useState(false);
-  const [lighthouseConfigExists, setLighthouseConfigExists] = useState(false);
+  // Use SWR for CA cert and Lighthouse config
+  const { data: caData } = useSWR(`${API_BASE_URL}/api/ca`, fetcher);
+  const { data: lhData } = useSWR(`${API_BASE_URL}/api/lighthouse/config`, fetcher);
 
-  useEffect(() => {
-    async function checkConfigs() {
-      // Check CA cert
-      const caRes = await fetch(`${API_BASE_URL}/api/ca`);
-      const caData = await caRes.json();
-      setCertExists(!!caData?.exists && caData?.key_exists);
-
-      // Check Lighthouse config
-      const lhRes = await fetch(`${API_BASE_URL}/api/lighthouse/config`);
-      const lhData = await lhRes.json();
-      setLighthouseConfigExists(!!lhData?.config);
-    }
-    checkConfigs();
-  }, []);
+  const certExists = !!caData?.exists && caData?.key_exists;
+  const lighthouseConfigExists = !!lhData?.config;
 
   const location = useLocation();
   const navItems = [
     { label: 'Lighthouse', to: '/lighthouse', icon: <TowerControlIcon size={20} />, disabled: !certExists },
     { label: 'Hosts', to: '/hosts', icon: <Server size={20} />, disabled: !lighthouseConfigExists },
-    { label: 'Cert', to: '/cert', icon: <Shield size={20} />, disabled: false },
-  ]; ``
+    { label: 'Primary Cert', to: '/cert', icon: <Shield size={20} />, disabled: false },
+  ];
   return (
     <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4">Nebula</Typography>
@@ -75,7 +66,6 @@ function App() {
   return (
     <Router>
       <CssBaseline />
-
       <MainLayout>
         {/* You can pass certExists and lighthouseConfigExists as props if needed */}
         <Routes>
@@ -90,3 +80,4 @@ function App() {
 }
 
 export default App;
+

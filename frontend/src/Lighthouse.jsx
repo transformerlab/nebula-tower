@@ -1,37 +1,18 @@
-import { useEffect, useState } from 'react';
+import useSWR, { mutate } from 'swr';
+import { useState } from 'react';
 import { Box, Typography, Sheet, CircularProgress, Alert, Button } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
 
 
+const fetcher = url => fetch(url).then(res => res.status === 404 ? null : res.json());
+
 export default function Lighthouse() {
-  const [config, setConfig] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: config, error, isLoading } = useSWR(
+    `${API_BASE_URL}/api/lighthouse/config`,
+    fetcher
+  );
   const [recreateLoading, setRecreateLoading] = useState(false);
   const [recreateError, setRecreateError] = useState(null);
-
-  const fetchConfig = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/lighthouse/config`);
-      if (res.status === 404) {
-        setConfig(null);
-      } else if (res.ok) {
-        const json = await res.json();
-        setConfig(json);
-      } else {
-        setError('Failed to load config');
-      }
-    } catch (e) {
-      setError('Failed to load config');
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchConfig();
-  }, []);
 
   const handleRecreate = async () => {
     if (!confirm("Recreating the config will destroy your lighthouse configuration. Are you sure?")) {
@@ -46,7 +27,7 @@ export default function Lighthouse() {
       if (!res.ok) {
         setRecreateError('Failed to recreate config');
       } else {
-        await fetchConfig();
+        mutate(`${API_BASE_URL}/api/lighthouse/config`);
       }
     } catch (e) {
       setRecreateError('Failed to recreate config');
@@ -59,7 +40,7 @@ export default function Lighthouse() {
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>Lighthouse Config</Typography>
-      {loading ? <CircularProgress /> : (
+      {isLoading ? <CircularProgress /> : (
         <Box>
           {isMissingConfig && (
             <Alert color="warning" sx={{ mb: 2 }}>
@@ -84,7 +65,7 @@ export default function Lighthouse() {
           </pre>
         </Box>
       )}
-      {error && <Alert color="danger" sx={{ mt: 2 }}>{error}</Alert>}
+      {error && <Alert color="danger" sx={{ mt: 2 }}>{error.message || 'Failed to load config'}</Alert>}
       <Button
         color="danger"
         variant="solid"
@@ -98,3 +79,4 @@ export default function Lighthouse() {
     </Sheet>
   );
 }
+
