@@ -6,7 +6,7 @@ import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
 export default function Lighthouse() {
   const fetcher = useAdminFetcher();
-  const adminPassword = useAdminPassword();
+  const { adminPassword } = useAdminPassword();
   const { data: config, error, isLoading } = useSWR(
     `${API_BASE_URL}/admin/api/lighthouse/config`,
     fetcher

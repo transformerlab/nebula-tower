@@ -49,7 +49,7 @@ def create_host_config(org, name):
         },
         "inbound": [
             {
-                "groups": ["orggroup"],
+                "groups": ["org_" + org],
                 "port": "any",
                 "proto": "any"
             }
@@ -93,7 +93,11 @@ def create_certs(org, name):
     print(f"Host entry found: {host_entry}")
 
     ip = host_entry['ip']
-    groups = ",".join(host_entry['tags']) if host_entry.get('tags') else ""
+    # add a new group called "org_{org}" first
+    groups = [f"org_{org}"]
+    if host_entry.get('tags'):
+        groups.extend(host_entry['tags'])
+    groups = ",".join(groups)
     print(f"IP: {ip}, Groups: {groups}")
 
     out_crt = os.path.join(host_dir, "host.crt")
@@ -201,8 +205,8 @@ async def create_host(req: HostRequest):
         raise HTTPException(status_code=400, detail='Invalid name or org')
     if not isinstance(tags, list) or not all(is_safe_string(t) for t in tags):
         raise HTTPException(status_code=400, detail='Invalid tags')
-    if any(t.startswith(org) for t in tags):
-        raise HTTPException(status_code=400, detail='Tags cannot start with org name')
+    if any(t.startswith("org") for t in tags):
+        raise HTTPException(status_code=400, detail='Tags cannot start with "org"')
 
     # Ensure hosts dir exists
     os.makedirs(ORGS_DIR, exist_ok=True)
@@ -351,12 +355,17 @@ async def get_org_host(org_name: str, host_name: str):
     cert_key = load_file(cert_key_file, default="")
     cert_crt = load_file(cert_crt_file, default="")
 
+    # cert_details_json = ./nebula-cert print -path data/orgs/a/hosts/e/host.crt -json
+    nebula = NebulaAPI()
+    cert_details_json = nebula.print_cert(cert_crt_file)
+
     return {
         "host": {
             "name": host_name,
             "config": config,
             "cert_key": cert_key,
-            "cert_crt": cert_crt
+            "cert_crt": cert_crt,
+            "cert_details": cert_details_json
         }
     }
 

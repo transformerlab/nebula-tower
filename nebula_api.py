@@ -154,3 +154,16 @@ class NebulaAPI:
             return result.stdout.strip() or result.stderr.strip()
         except subprocess.CalledProcessError as e:
             return e.stdout.strip() + '\n' + e.stderr.strip()
+
+    def print_cert(self, cert_path: str) -> str:
+        """
+        Print Nebula certificate details in JSON format.
+
+        Args:
+            cert_path: Path to the certificate file.
+
+        Returns:
+            JSON string with certificate details.
+        """
+        cmd = [self.cert_path, "print", "-path", cert_path, "-json"]
+        return self._run(cmd)

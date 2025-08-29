@@ -10,7 +10,7 @@ import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
 function NebulaProcessStatusCard({ disableButtons = false }) {
     const fetcher = useAdminFetcher();
-    const adminPassword = useAdminPassword();
+    const { adminPassword } = useAdminPassword();
     const { data, mutate, isLoading } = useSWR(
         `${API_BASE_URL}/admin/api/nebula_process/status`,
         fetcher,

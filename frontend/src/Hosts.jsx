@@ -51,7 +51,7 @@ function formatHostIP(ip) {
 
 function Hosts() {
   const fetcher = useAdminFetcher();
-  const adminPassword = useAdminPassword();
+  const { adminPassword } = useAdminPassword();
   const [selectedOrg, setSelectedOrg] = useState('');
   const [hostsFilter, setHostsFilter] = useState(''); // not used, but for future
   const [name, setName] = useState('');
@@ -251,6 +251,98 @@ function Hosts() {
                   <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
                     {JSON.stringify(hostDetails.config, null, 2)}
                   </pre>
+                </Box>
+              )}
+              {hostDetails.cert_details && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography level="body2"><b>Certificate Details:</b></Typography>
+                  {(() => {
+                    let certs = hostDetails.cert_details;
+                    if (typeof certs === 'string') {
+                      try {
+                        certs = JSON.parse(certs);
+                      } catch (e) {
+                        return (
+                          <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
+                            {hostDetails.cert_details}
+                          </pre>
+                        );
+                      }
+                    }
+                    if (Array.isArray(certs)) {
+                      return certs.map((cert, idx) => (
+                        <Box key={idx} sx={{ mb: 2, p: 1, border: '1px solid #eee', borderRadius: 2, background: '#fafbfc' }}>
+                          <Typography level="body3" sx={{ mb: 1 }}><b>Certificate #{idx + 1}</b></Typography>
+                          <Table size="sm" sx={{ overflow: 'hidden' }}>
+                            <tbody>
+                              <tr>
+                                <td><b>Curve</b></td>
+                                <td>{cert.curve}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Fingerprint</b></td>
+                                <td style={{ fontFamily: 'monospace' }}>{cert.fingerprint}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Public Key</b></td>
+                                <td style={{ fontFamily: 'monospace' }}>{cert.publicKey}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Signature</b></td>
+                                <td style={{ fontFamily: 'monospace' }}>{cert.signature}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Version</b></td>
+                                <td>{cert.version}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Name</b></td>
+                                <td>{cert.details?.name}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Issuer</b></td>
+                                <td style={{ fontFamily: 'monospace' }}>{cert.details?.issuer}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Is CA</b></td>
+                                <td>{cert.details?.isCa ? 'Yes' : 'No'}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Networks</b></td>
+                                <td>
+                                  {Array.isArray(cert.details?.networks)
+                                    ? cert.details.networks.join(', ')
+                                    : ''}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td><b>Groups</b></td>
+                                <td>
+                                  {Array.isArray(cert.details?.groups)
+                                    ? cert.details.groups.join(', ')
+                                    : (cert.details?.groups || '')}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td><b>Not Before</b></td>
+                                <td>{cert.details?.notBefore}</td>
+                              </tr>
+                              <tr>
+                                <td><b>Not After</b></td>
+                                <td>{cert.details?.notAfter}</td>
+                              </tr>
+                            </tbody>
+                          </Table>
+                        </Box>
+                      ));
+                    }
+                    // fallback if not array
+                    return (
+                      <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, fontSize: 13 }}>
+                        {JSON.stringify(certs, null, 2)}
+                      </pre>
+                    );
+                  })()}
                 </Box>
               )}
               {hostDetails.cert_crt && (

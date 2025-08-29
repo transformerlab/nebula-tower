@@ -6,7 +6,7 @@ import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
 export default function Cert() {
   const fetcher = useAdminFetcher();
-  const adminPassword = useAdminPassword();
+  const { adminPassword } = useAdminPassword();
 
   const [orgName, setOrgName] = useState('');
   const [creating, setCreating] = useState(false);
