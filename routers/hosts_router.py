@@ -7,7 +7,7 @@ from ipaddress import IPv6Network
 from nebula_api import NebulaAPI
 import shutil
 from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, SAFE_STRING_RE, IPV6_PREFIX, LIGHTHOUSE_IP, EXTERNAL_IP
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 import io
 import zipfile
  
@@ -356,3 +356,23 @@ async def download_org_host_config(org_name: str, host_name: str):
     return StreamingResponse(mem_zip, media_type="application/zip", headers={
         "Content-Disposition": f"attachment; filename={org_name}_{host_name}_config.zip"
     })
+
+@router.get("/api/orgs/{org_name}/hosts/{host_name}/download_config")
+async def download_org_host_config_plain(org_name: str, host_name: str):
+    org_name = sanitize_string(org_name)
+    host_name = sanitize_string(host_name)
+
+    if not os.path.exists(ORGS_DIR) or not os.path.isdir(ORGS_DIR):
+        raise HTTPException(status_code=404, detail="Org not found")
+
+    org_dir = os.path.join(ORGS_DIR, org_name)
+    if not os.path.isdir(org_dir):
+        raise HTTPException(status_code=404, detail="Org not found")
+
+    host_dir = os.path.join(org_dir, 'hosts', host_name)
+    if not os.path.isdir(host_dir):
+        raise HTTPException(status_code=404, detail="Host not found")
+
+    config_file = os.path.join(host_dir, 'config.yaml')
+
+    return FileResponse(config_file, media_type='application/x-yaml', filename=f"{org_name}_{host_name}_config.yaml")   

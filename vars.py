@@ -8,6 +8,6 @@ ORGS_FILE = os.path.join(ORGS_DIR, 'orgs.yaml')
 
 SAFE_STRING_RE = re.compile(r'^[a-z0-9]+$')
 
-IPV6_PREFIX = "fdc8:d559:029d"
+IPV6_PREFIX = os.getenv("IPV6_PREFIX", "fdc8:d559:029d")
 LIGHTHOUSE_IP = f"{IPV6_PREFIX}::1"
 EXTERNAL_IP = os.getenv("LIGHTHOUSE_PUBLIC_IP")

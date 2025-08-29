@@ -57,7 +57,7 @@ function MainLayout({ children }) {
 function Home() {
   return (
     <Sheet>
-
+      <img src="/tower.png" alt="Tower" width="100%" />
     </Sheet>
   );
 }
