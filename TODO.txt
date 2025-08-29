@@ -2,6 +2,7 @@
 
 TODO:
 ---
+- Real Authorization
 - Move binaries to their own directory
 - Write a script to get the right binaries for a specific system
 - Build frontend in a way that the backend can load it as static

@@ -17,11 +17,14 @@ from routers.nebula_process_router import router as nebula_process_router
 async def lifespan(app):
     yield
 
-def check_admin_password(x_admin_password: str = Header(None)):
+def check_admin_password(authorization: str = Header(None)):
     expected = os.environ.get("ADMIN_PASSWORD")
     if not expected:
         raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not set in environment.")
-    if x_admin_password != expected:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
+    token = authorization.removeprefix("Bearer ").strip()
+    if token != expected:
         raise HTTPException(status_code=401, detail="Invalid admin password.")
 
 app = FastAPI(
@@ -67,6 +70,10 @@ key_path = os.path.join(cert_dir, CA_KEY_PATH)
 
 class CreateCARequest(BaseModel):
     name: str
+
+@app.get("/admin/api/ping", dependencies=[Depends(check_admin_password)])
+def ping():
+    return {"status": "ok"}
 
 @app.get("/admin/api/ca", dependencies=[Depends(check_admin_password)])
 def get_ca_cert():

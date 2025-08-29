@@ -2,11 +2,12 @@ import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import { Box, Button, Input, Typography, Sheet, CircularProgress, Alert } from '@mui/joy';
-import { Link } from 'react-router-dom';
-
-const fetcher = url => fetch(url).then(res => res.json());
+import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
 export default function Cert() {
+  const fetcher = useAdminFetcher();
+  const adminPassword = useAdminPassword();
+
   const [orgName, setOrgName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
@@ -49,7 +50,10 @@ export default function Cert() {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/api/ca`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminPassword}`
+        },
         body: JSON.stringify({ name: orgName })
       });
       if (res.ok) {

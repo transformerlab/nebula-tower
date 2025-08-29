@@ -9,22 +9,10 @@ import Lighthouse from './Lighthouse';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
 import { AdminPasswordProvider } from './context/admin';
-import { useAdminPassword } from './context/adminContext';
+import { useAdminPassword, useAdminFetcher } from './context/adminContext';
 import { AdminPasswordModal } from './components/AdminPasswordModal';
 
-function useAdminFetcher() {
-  const { adminPassword } = useAdminPassword();
-  return useCallback(
-    async (url) => {
-      const res = await fetch(url, {
-        headers: { Authorization: adminPassword ? `Bearer ${adminPassword}` : '' },
-      });
-      if (!res.ok) throw new Error('Network response was not ok');
-      return res.json();
-    },
-    [adminPassword]
-  );
-}
+
 
 function Sidebar() {
   const fetcher = useAdminFetcher();

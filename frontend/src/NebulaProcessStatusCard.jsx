@@ -3,11 +3,14 @@ import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import { PlayCircle, StopCircle } from "lucide-react";
 import { useState } from 'react';
+import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
 
-const fetcher = url => fetch(url).then(res => res.json());
+
 
 function NebulaProcessStatusCard({ disableButtons = false }) {
+    const fetcher = useAdminFetcher();
+    const adminPassword = useAdminPassword();
     const { data, mutate, isLoading } = useSWR(
         `${API_BASE_URL}/admin/api/nebula_process/status`,
         fetcher,
@@ -19,7 +22,12 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStart = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/admin/api/nebula_process/start`, { method: "POST" })
+            await fetch(`${API_BASE_URL}/admin/api/nebula_process/start`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${adminPassword}`
+                }
+            })
             mutate();
         } finally {
             setLoading(false)
@@ -29,7 +37,12 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStop = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/admin/api/nebula_process/stop`, { method: "POST" })
+            await fetch(`${API_BASE_URL}/admin/api/nebula_process/stop`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${adminPassword}`
+                }
+            })
             mutate();
         } finally {
             setLoading(false)

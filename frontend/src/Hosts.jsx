@@ -3,8 +3,8 @@ import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
 import { Box, Button, Typography, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
+import { useAdminFetcher, useAdminPassword } from './context/adminContext';
 
-const fetcher = url => fetch(url).then(res => res.json());
 
 function formatHostIP(ip) {
   try {
@@ -50,6 +50,8 @@ function formatHostIP(ip) {
 }
 
 function Hosts() {
+  const fetcher = useAdminFetcher();
+  const adminPassword = useAdminPassword();
   const [selectedOrg, setSelectedOrg] = useState('');
   const [hostsFilter, setHostsFilter] = useState(''); // not used, but for future
   const [name, setName] = useState('');
@@ -97,7 +99,10 @@ function Hosts() {
     try {
       const resp = await fetch(`${API_BASE_URL}/admin/api/hosts/new`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminPassword}`
+        },
         body: JSON.stringify({
           org: selectedOrg,
           name,
@@ -126,7 +131,10 @@ function Hosts() {
     try {
       const resp = await fetch(`${API_BASE_URL}/admin/api/orgs/new`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminPassword}`
+        },
         body: JSON.stringify({ name: newOrgName.trim() })
       });
       const data = await resp.json();
