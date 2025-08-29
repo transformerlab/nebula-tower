@@ -3,7 +3,7 @@ import os
 import yaml
 import shutil
 from nebula_api import NebulaAPI
-from vars import LIGHTHOUSE_IP
+from vars import DATA_DIR, LIGHTHOUSE_IP
 
 router = APIRouter()
 
@@ -103,9 +103,8 @@ def create_lighthouse_certs():
     out_crt = os.path.join(lighthouse_dir, "host.crt")
     out_key = os.path.join(lighthouse_dir, "host.key")
     print(f"Output certificate path: {out_crt}, Output key path: {out_key}")
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    ca_crt = os.path.join(project_root, "data", "certs", "ca.crt")
-    ca_key = os.path.join(project_root, "data", "certs", "ca.key")
+    ca_crt = os.path.join(DATA_DIR, "certs", "ca.crt")
+    ca_key = os.path.join(DATA_DIR, "certs", "ca.key")
     print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
     networks = f"{LIGHTHOUSE_IP}/64"
     nebula = NebulaAPI()

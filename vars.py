@@ -2,7 +2,8 @@ import os
 import re
 
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(ROOT_DIR, 'data')
 ORGS_DIR = os.path.join(DATA_DIR, 'orgs')
 ORGS_FILE = os.path.join(ORGS_DIR, 'orgs.yaml')
 

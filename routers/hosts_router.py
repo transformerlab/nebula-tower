@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from ipaddress import IPv6Network
 from nebula_api import NebulaAPI
 import shutil
-from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, SAFE_STRING_RE, IPV6_PREFIX, LIGHTHOUSE_IP, EXTERNAL_IP
+from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, ROOT_DIR, SAFE_STRING_RE, IPV6_PREFIX, LIGHTHOUSE_IP, EXTERNAL_IP
 from fastapi.responses import FileResponse, StreamingResponse
 import io
 import zipfile
@@ -21,7 +21,7 @@ def create_host_config(org, name):
     os.makedirs(host_dir, exist_ok=True)
 
     # Copy the config.yml.sample from the root dir to the hosts dir:
-    sample_config_file = os.path.join(os.path.dirname(__file__), 'config.yml.example')
+    sample_config_file = os.path.join(ROOT_DIR, 'config.yml.example')
     config_file = os.path.join(host_dir, 'config.yaml')
     shutil.copy(sample_config_file, config_file)
 
@@ -101,8 +101,8 @@ def create_certs(org, name):
     print(f"Output certificate path: {out_crt}, Output key path: {out_key}")
 
     # Optionally, you can set ca_crt and ca_key to org-specific CA if needed
-    ca_crt = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.crt")
-    ca_key = os.path.join(os.path.dirname(__file__), "data", "certs", "ca.key")
+    ca_crt = os.path.join(DATA_DIR, "certs", "ca.crt")
+    ca_key = os.path.join(DATA_DIR, "certs", "ca.key")
     print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
 
     # Use the required format for networks: "<ip>/64"
