@@ -9,7 +9,7 @@ const fetcher = url => fetch(url).then(res => res.json());
 
 function NebulaProcessStatusCard({ disableButtons = false }) {
     const { data, mutate, isLoading } = useSWR(
-        `${API_BASE_URL}/api/nebula_process/status`,
+        `${API_BASE_URL}/admin/api/nebula_process/status`,
         fetcher,
         { refreshInterval: 1500 }
     );
@@ -19,7 +19,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStart = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/api/nebula_process/start`, { method: "POST" })
+            await fetch(`${API_BASE_URL}/admin/api/nebula_process/start`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)
@@ -29,7 +29,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStop = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/api/nebula_process/stop`, { method: "POST" })
+            await fetch(`${API_BASE_URL}/admin/api/nebula_process/stop`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)

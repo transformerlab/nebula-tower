@@ -1,20 +1,35 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import useSWR from 'swr';
-import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator, Card } from '@mui/joy';
+import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator } from '@mui/joy';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import Cert from './Cert';
 import Hosts from './Hosts';
-import { Shield, HomeIcon, Server, TowerControlIcon } from 'lucide-react';
+import { Shield, Server, TowerControlIcon } from 'lucide-react';
 import Lighthouse from './Lighthouse';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
+import { AdminPasswordProvider } from './context/admin';
+import { useAdminPassword } from './context/adminContext';
+import { AdminPasswordModal } from './components/AdminPasswordModal';
 
-const fetcher = url => fetch(url).then(res => res.json());
+function useAdminFetcher() {
+  const { adminPassword } = useAdminPassword();
+  return useCallback(
+    async (url) => {
+      const res = await fetch(url, {
+        headers: { Authorization: adminPassword ? `Bearer ${adminPassword}` : '' },
+      });
+      if (!res.ok) throw new Error('Network response was not ok');
+      return res.json();
+    },
+    [adminPassword]
+  );
+}
 
 function Sidebar() {
-  // Use SWR for CA cert and Lighthouse config
-  const { data: caData } = useSWR(`${API_BASE_URL}/api/ca`, fetcher);
-  const { data: lhData } = useSWR(`${API_BASE_URL}/api/lighthouse/config`, fetcher);
+  const fetcher = useAdminFetcher();
+  const { data: caData } = useSWR(`${API_BASE_URL}/admin/api/ca`, fetcher);
+  const { data: lhData } = useSWR(`${API_BASE_URL}/admin/api/lighthouse/config`, fetcher);
 
   const certExists = !!caData?.exists && caData?.key_exists;
   const lighthouseConfigExists = !!lhData?.config;
@@ -29,8 +44,6 @@ function Sidebar() {
     <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4">Nebula</Typography>
       <NebulaProcessStatusCard disableButtons={!lighthouseConfigExists} />
-      {/* {certExists && <Typography level="body2">CA Certificate exists</Typography>}
-      {lighthouseConfigExists && <Typography level="body2">Lighthouse config exists</Typography>} */}
       <List>
         {navItems.map(item => (
           <ListItem key={item.to} selected={location.pathname === item.to} >
@@ -66,21 +79,31 @@ function Home() {
 }
 
 function App() {
+  const { adminPassword } = useAdminPassword();
+
   return (
-    <Router>
-      <CssBaseline />
-      <MainLayout>
-        {/* You can pass certExists and lighthouseConfigExists as props if needed */}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/cert" element={<Cert />} />
-          <Route path="/lighthouse" element={<Lighthouse />} />
-          <Route path="/hosts" element={<Hosts />} />
-        </Routes>
-      </MainLayout>
-    </Router>
+    <>
+      <AdminPasswordModal open={!adminPassword} />
+      <Router>
+        <CssBaseline />
+        <MainLayout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/cert" element={<Cert />} />
+            <Route path="/lighthouse" element={<Lighthouse />} />
+            <Route path="/hosts" element={<Hosts />} />
+          </Routes>
+        </MainLayout>
+      </Router>
+    </>
   );
 }
 
-export default App;
+export default function AppWithProvider() {
+  return (
+    <AdminPasswordProvider>
+      <App />
+    </AdminPasswordProvider>
+  );
+}
 

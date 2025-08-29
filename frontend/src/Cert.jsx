@@ -13,14 +13,14 @@ export default function Cert() {
 
   // SWR for CA cert
   const { data: caData, error: caError, isLoading: caLoading } = useSWR(
-    `${API_BASE_URL}/api/ca`,
+    `${API_BASE_URL}/admin/api/ca`,
     fetcher
   );
 
   // SWR for CA info (only fetch if CA exists)
   const shouldFetchInfo = caData && caData.exists;
   const { data: infoData, error: infoError, isLoading: infoLoading } = useSWR(
-    shouldFetchInfo ? `${API_BASE_URL}/api/ca/info` : null,
+    shouldFetchInfo ? `${API_BASE_URL}/admin/api/ca/info` : null,
     fetcher
   );
 
@@ -38,8 +38,8 @@ export default function Cert() {
   }
 
   const handleRefresh = () => {
-    mutate(`${API_BASE_URL}/api/ca`);
-    if (shouldFetchInfo) mutate(`${API_BASE_URL}/api/ca/info`);
+    mutate(`${API_BASE_URL}/admin/api/ca`);
+    if (shouldFetchInfo) mutate(`${API_BASE_URL}/admin/api/ca/info`);
   };
 
   const handleCreate = async (e) => {
@@ -47,15 +47,15 @@ export default function Cert() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ca`, {
+      const res = await fetch(`${API_BASE_URL}/admin/api/ca`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: orgName })
       });
       if (res.ok) {
         setOrgName('');
-        mutate(`${API_BASE_URL}/api/ca`);
-        mutate(`${API_BASE_URL}/api/ca/info`);
+        mutate(`${API_BASE_URL}/admin/api/ca`);
+        mutate(`${API_BASE_URL}/admin/api/ca/info`);
       } else {
         const err = await res.json();
         setError(err.detail || 'Failed to create CA cert.');

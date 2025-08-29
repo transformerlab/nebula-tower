@@ -8,7 +8,7 @@ const fetcher = url => fetch(url).then(res => res.status === 404 ? null : res.js
 
 export default function Lighthouse() {
   const { data: config, error, isLoading } = useSWR(
-    `${API_BASE_URL}/api/lighthouse/config`,
+    `${API_BASE_URL}/admin/api/lighthouse/config`,
     fetcher
   );
   const [recreateLoading, setRecreateLoading] = useState(false);
@@ -21,13 +21,13 @@ export default function Lighthouse() {
     setRecreateLoading(true);
     setRecreateError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/lighthouse/create_config`, {
+      const res = await fetch(`${API_BASE_URL}/admin/api/lighthouse/create_config`, {
         method: 'POST',
       });
       if (!res.ok) {
         setRecreateError('Failed to recreate config');
       } else {
-        mutate(`${API_BASE_URL}/api/lighthouse/config`);
+        mutate(`${API_BASE_URL}/admin/api/lighthouse/config`);
       }
     } catch (e) {
       setRecreateError('Failed to recreate config');

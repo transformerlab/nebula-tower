@@ -63,7 +63,7 @@ function Hosts() {
 
   // SWR for orgs
   const { data: orgsData, error: orgsError, isLoading: orgsLoading } = useSWR(
-    `${API_BASE_URL}/api/orgs`,
+    `${API_BASE_URL}/admin/api/orgs`,
     fetcher
   );
   const orgs = orgsData?.orgs || [];
@@ -73,7 +73,7 @@ function Hosts() {
 
   // SWR for hosts in selected org
   const { data: hostsData, error: hostsError, isLoading: hostsLoading } = useSWR(
-    selectedOrg ? `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts` : null,
+    selectedOrg ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts` : null,
     fetcher
   );
   const hosts = hostsData?.hosts || [];
@@ -81,7 +81,7 @@ function Hosts() {
   // SWR for host details
   const { data: hostDetailsData, error: hostDetailsError, isLoading: hostDetailsLoading } = useSWR(
     selectedHost && selectedOrg
-      ? `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
+      ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
       : null,
     fetcher
   );
@@ -95,7 +95,7 @@ function Hosts() {
     }
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/api/hosts/new`, {
+      const resp = await fetch(`${API_BASE_URL}/admin/api/hosts/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,7 +106,7 @@ function Hosts() {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Failed to add host');
-      mutate(`${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts`);
+      mutate(`${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts`);
       setName('');
       setTags('');
     } catch (e) {
@@ -124,7 +124,7 @@ function Hosts() {
     }
     setOrgCreateLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/api/orgs/new`, {
+      const resp = await fetch(`${API_BASE_URL}/admin/api/orgs/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newOrgName.trim() })
@@ -132,7 +132,7 @@ function Hosts() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Failed to create org');
       setNewOrgName('');
-      mutate(`${API_BASE_URL}/api/orgs`);
+      mutate(`${API_BASE_URL}/admin/api/orgs`);
     } catch (e) {
       setOrgCreateError(e.message);
     } finally {
@@ -226,7 +226,7 @@ function Hosts() {
           </Typography>
           <Button
             onClick={() => {
-              const downloadUrl = `${API_BASE_URL}/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
+              const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
               window.open(downloadUrl, '_blank');
             }}
           >
