@@ -44,7 +44,7 @@ esac
 echo "Downloading $BASE_URL/$FILE"
 curl -LO "$BASE_URL/$FILE"
 
-# Add the check later once we have confirmed checksums
+# @TODO adjust to use specific version if you are confirming checksums
 # echo "$SHA256  $FILE" | sha256sum -c -
 
 echo "Extracting $FILE..."
