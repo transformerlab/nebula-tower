@@ -7,9 +7,9 @@ from nebula_api import NebulaAPI
 
 
 # Import the hosts router
-from hosts_router import router as hosts_router
-from lighthouse_router import router as lighthouse_router
-from nebula_process_router import router as nebula_process_router
+from routers.hosts_router import router as hosts_router
+from routers.lighthouse_router import router as lighthouse_router
+from routers.nebula_process_router import router as nebula_process_router
 
 
 # Use FastAPI lifespan event for startup config

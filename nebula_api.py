@@ -45,11 +45,11 @@ class NebulaAPI:
         out_key: str,
         ca_crt: str = "ca.crt",
         ca_key: str = "ca.key",
-        groups: str = None,
-        duration: str = None,
-        in_pub: str = None,
-        out_qr: str = None,
-        subnets: str = None,
+        groups: str | None = None,
+        duration: str | None = None,
+        in_pub: str | None = None,
+        out_qr: str | None = None,
+        subnets: str | None = None,
     ) -> str:
         """
         Sign and create a Nebula certificate for a host.
