@@ -74,7 +74,7 @@ export default function Cert() {
 
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
-      <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate Manager</Typography>
+      <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate</Typography>
       <Button onClick={handleRefresh} sx={{ mb: 2 }}>Reload</Button>
       {loading ? <CircularProgress /> : (
         <>

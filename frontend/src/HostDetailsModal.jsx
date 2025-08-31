@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { Box, Button, Typography, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose, Chip } from '@mui/joy';
+import { Box, Button, Typography, Divider, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose, Chip } from '@mui/joy';
 
 import { useAdminFetcher } from './context/adminContext';
 import API_BASE_URL from './apiConfig';
@@ -37,14 +37,6 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
                 <Typography level="h2" fontSize="1.2rem" mb={2}>
                     Host Details: <b>{selectedHost}</b>
                 </Typography>
-                <Button
-                    onClick={() => {
-                        const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
-                        window.open(downloadUrl, '_blank');
-                    }}
-                >
-                    Download all Host Config
-                </Button>
                 {hostDetailsLoading && <Typography>Loading...</Typography>}
                 {hostDetailsError && <Typography color="danger">{hostDetailsError.message || hostDetailsError}</Typography>}
                 {hostDetails && (
@@ -66,7 +58,16 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
                         <Typography level="body-m"><b>Is Relay:</b> {hostDetails?.config?.relay?.am_relay ? 'Yes' : 'No'}</Typography>
                         {/* {JSON.stringify(hostDetails.config.lighthouse)} */}
                         {/* <pre>{JSON.stringify(firstCert, null, 2)}</pre> */}
-
+                        <Divider sx={{ my: 2 }} />
+                        <Button
+                            onClick={() => {
+                                const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
+                                window.open(downloadUrl, '_blank');
+                            }}
+                            sx={{ mb: 4 }}
+                        >
+                            Download all Host Config
+                        </Button>
                         {hostDetails.config && (
                             <Box sx={{ mt: 1 }}>
                                 <Typography level="body2"><b>Config:</b></Typography>
@@ -75,6 +76,7 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
                                 </pre>
                             </Box>
                         )}
+
                         {hostDetails.cert_details && (
                             <Box sx={{ mt: 1 }}>
                                 <Typography level="body2"><b>Certificate Details:</b></Typography>
