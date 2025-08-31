@@ -30,7 +30,7 @@ function Sidebar() {
   ];
   return (
     <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
-      <Typography level="h4">Nebula</Typography>
+      <Typography level="h4"><img src="/tower-top.png" alt="Nebula Logo" style={{ width: 24, height: 24, marginRight: 8 }} />Nebula Tower</Typography>
       <NebulaProcessStatusCard disableButtons={!lighthouseConfigExists} />
       <List>
         {navItems.map(item => (
@@ -48,7 +48,7 @@ function Sidebar() {
 
 function MainLayout({ children }) {
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
       <Sidebar />
       <Sheet sx={{ flex: 1, pl: 2 }}>{children}</Sheet>
     </Box>

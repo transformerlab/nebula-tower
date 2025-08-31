@@ -2,6 +2,23 @@
 
 set -e
 
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    lighthouse=*)
+      LIGHTHOUSE_IP="${arg#*=}"
+      ;;
+    invite=*)
+      INVITE_CODE="${arg#*=}"
+      ;;
+  esac
+done
+
+if [[ -z "$LIGHTHOUSE_IP" || -z "$INVITE_CODE" ]]; then
+  echo "Error: Both arguments are required: lighthouse=<ip address> and invite=<code>"
+  exit 1
+fi
+
 if command -v nebula &> /dev/null; then
   echo "nebula is already installed."
   NEBULA_VERSION_INSTALLED="$(nebula -version 2>&1 || true)"

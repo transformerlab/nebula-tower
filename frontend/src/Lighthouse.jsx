@@ -47,22 +47,22 @@ export default function Lighthouse() {
         <Box>
           {isMissingConfig && (
             <Alert color="warning" sx={{ mb: 2 }}>
-              Some config or certs are missing in /data/lighthouse.
+              Some config or certs are missing in data/lighthouse.
             </Alert>
           )}
-          <Typography level="body-lg" mb={1}>Config file at /data/lighthouse/config.yaml:</Typography>
+          <Typography level="body-lg" mb={1}>Config file (config.yaml):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.config ?? '[Missing config.yaml]'}
           </pre>
-          <Typography level="body-lg" mt={2} mb={1}>CA cert at /data/lighthouse/ca.crt:</Typography>
+          <Typography level="body-lg" mt={2} mb={1}>CA cert (ca.crt):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.ca_cert ?? '[Missing ca.crt]'}
           </pre>
-          <Typography level="body-lg" mt={2} mb={1}>Host cert at /data/lighthouse/host.crt:</Typography>
+          <Typography level="body-lg" mt={2} mb={1}>Host cert (host.crt):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.host_cert ?? '[Missing host.crt]'}
           </pre>
-          <Typography level="body-lg" mt={2} mb={1}>Host key at /data/lighthouse/host.key:</Typography>
+          <Typography level="body-lg" mt={2} mb={1}>Host key (host.key):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.host_key ?? '[Missing host.key]'}
           </pre>

@@ -10,6 +10,9 @@ from vars import DATA_DIR, ORGS_DIR, ORGS_FILE, ROOT_DIR, SAFE_STRING_RE, IPV6_P
 from fastapi.responses import FileResponse, StreamingResponse
 import io
 import zipfile
+import secrets
+import string
+from datetime import datetime, timedelta
  
 router = APIRouter()
 
@@ -230,14 +233,16 @@ async def create_host(req: HostRequest):
         hosts = []
 
     # Ensure host name is unique within the org
-    if any(h.get('name') == name for h in hosts):
-        raise HTTPException(status_code=400, detail='Host name already exists in this org')
+    base_name = name
+    suffix = 1
+    existing_names = {h.get('name') for h in hosts}
+    while name in existing_names:
+        name = f"{base_name}{suffix}"
+        suffix += 1
 
     # Assign next IP in subnet using ULA formula
     used_ips = {h['ip'] for h in hosts if 'ip' in h}
-    # subnet is like 'fd{RANDOM_10_HEX_DIGITS}{subnet_id_hex}::/64'
     net = IPv6Network(subnet)
-    # Start allocating from 1 (skip ::)
     for host_id in range(1, 2**64):
         ip_int = int(net.network_address) + host_id
         ip_str = str(IPv6Network((ip_int, 128)).network_address)
@@ -257,7 +262,7 @@ async def create_host(req: HostRequest):
 
     create_certs(org, name)
 
-    return {"success": True, "host": host_entry, "org": org, "subnet": subnet}
+    return {"success": True, "host": host_entry, "org": org, "subnet": subnet, "name": name}
 
 @router.get('/api/hosts')
 async def list_hosts():
@@ -417,3 +422,51 @@ async def download_org_host_config_plain(org_name: str, host_name: str):
     config_file = os.path.join(host_dir, 'config.yaml')
 
     return FileResponse(config_file, media_type='application/x-yaml', filename=f"{org_name}_{host_name}_config.yaml")
+
+
+# Generate Invite Code adds to a file called invites.yaml in the root of the DATA_DIR
+# (it creates the file if missing). And in each invite, you have a randomized code
+# with high entropy, an org, and a date when it expires
+@router.post("/api/invites/generate")
+async def generate_invite(org: str, days_valid: int = 7):
+    org = sanitize_string(org)
+
+    if not os.path.exists(ORGS_DIR):
+        raise HTTPException(status_code=404, detail="Org directory does not exist")
+
+    org_dir = os.path.join(ORGS_DIR, org)
+    if not os.path.isdir(org_dir):
+        raise HTTPException(status_code=404, detail=f"Org '{org}' not found")
+
+    invite_code = generate_random_code()
+    invite = {
+        "code": invite_code,
+        "org": org,
+        "expires_at": datetime.utcnow() + timedelta(days=days_valid),
+        "active": True  # Set active True by default
+    }
+
+    invites_file = os.path.join(DATA_DIR, "invites.yaml")
+    save_invite(invites_file, invite)
+
+    return {"invite": invite}
+
+def generate_random_code(length=32):
+    """
+    Generate a high-entropy random invite code.
+    """
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def save_invite(invites_file, invite):
+    """
+    Save an invite to the invites.yaml file. Appends to the list if file exists, otherwise creates a new list.
+    """
+    if os.path.exists(invites_file):
+        with open(invites_file, "r") as f:
+            invites = yaml.safe_load(f) or []
+    else:
+        invites = []
+    invites.append(invite)
+    with open(invites_file, "w") as f:
+        yaml.safe_dump(invites, f)

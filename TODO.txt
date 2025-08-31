@@ -9,6 +9,8 @@ TODO:
 - Give each org a different CA
 - How do we handle that central certs expire in a year. Can we refresh hosts in a nice way?
 - Make hosts create their own private keys and have server sign them
+- Landing page when setting up certs
+- Ability to ask the lighthouse if your cert needs a reload
 
 Nice to have:
 ---

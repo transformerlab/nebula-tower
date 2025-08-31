@@ -62,6 +62,11 @@ function Hosts() {
   const [newOrgName, setNewOrgName] = useState('');
   const [orgCreateError, setOrgCreateError] = useState('');
   const [orgCreateLoading, setOrgCreateLoading] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // SWR for orgs
   const { data: orgsData, error: orgsError, isLoading: orgsLoading } = useSWR(
@@ -148,44 +153,75 @@ function Hosts() {
     }
   };
 
+  const handleGenerateInvite = async () => {
+    setInviteLoading(true);
+    setInviteError('');
+    setInviteCode('');
+    if (!selectedOrg) {
+      setInviteError('Please select an organization first.');
+      setInviteModalOpen(true);
+      setInviteLoading(false);
+      return;
+    }
+    try {
+      const resp = await fetch(`${API_BASE_URL}/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminPassword}`
+        }
+        // No body needed, org is passed as query param
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || 'Failed to generate invite');
+      setInviteCode(data.invite.code);
+      setInviteModalOpen(true);
+    } catch (e) {
+      setInviteError(e.message);
+      setInviteModalOpen(true);
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
-      <Typography level="h1" fontSize="2rem" mb={2}>Organizations</Typography>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Input
-          placeholder="New Organization Name"
-          value={newOrgName}
-          onChange={e => setNewOrgName(e.target.value)}
-          disabled={orgCreateLoading}
-        />
-        <Button
-          onClick={handleCreateOrg}
-          loading={orgCreateLoading}
-          variant="solid"
-        >
-          Create Org
-        </Button>
-      </Box>
-      <List sx={{ mb: 3 }}>
-        {orgs.map(org => (
-          <ListItem
-            key={org.name}
-            sx={{
-              cursor: 'pointer',
-              fontWeight: org.name === selectedOrg ? 'bold' : 'normal',
-              bgcolor: org.name === selectedOrg ? 'neutral.softBg' : undefined
-            }}
-            onClick={() => setSelectedOrg(org.name)}
+      {!selectedOrg && (<><Typography level="h1" fontSize="2rem" mb={2}>Organizations</Typography>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Input
+            placeholder="New Organization Name"
+            value={newOrgName}
+            onChange={e => setNewOrgName(e.target.value)}
+            disabled={orgCreateLoading}
+          />
+          <Button
+            onClick={handleCreateOrg}
+            loading={orgCreateLoading}
+            variant="solid"
           >
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <span>{org.name}</span>
-              <Typography level="body2" color="neutral" fontSize="sm">
-                {org.subnet}
-              </Typography>
-            </Box>
-          </ListItem>
-        ))}
-      </List>
+            Create Org
+          </Button>
+        </Box>
+        <List sx={{ mb: 3 }}>
+          {orgs.map(org => (
+            <ListItem
+              key={org.name}
+              sx={{
+                cursor: 'pointer',
+                fontWeight: org.name === selectedOrg ? 'bold' : 'normal',
+                bgcolor: org.name === selectedOrg ? 'neutral.softBg' : undefined
+              }}
+              onClick={() => setSelectedOrg(org.name)}
+            >
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <span>{org.name}</span>
+                <Typography level="body2" color="neutral" fontSize="sm">
+                  {org.subnet}
+                </Typography>
+              </Box>
+            </ListItem>
+          ))}
+        </List></>)}
 
       {orgCreateError && <Typography color="danger" mb={2}>{orgCreateError}</Typography>}
       {selectedOrg && (
@@ -199,7 +235,50 @@ function Hosts() {
                 </Typography>
               )}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Button onClick={handleGenerateInvite} loading={inviteLoading}>Generate Invite Code</Button>
+            {/* Invite Code Modal */}
+            <Modal open={inviteModalOpen} onClose={() => { setInviteModalOpen(false); setInviteError(''); setInviteCode(''); setCopied(false); }}>
+              <ModalDialog sx={{ minWidth: 400 }}>
+                <ModalClose />
+                <Typography level="h2" mb={2}>Invite Code</Typography>
+                {inviteLoading && <Typography>Generating...</Typography>}
+                {inviteError && <Typography color="danger">{inviteError}</Typography>}
+                {inviteCode && typeof inviteCode === 'string' && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Input
+                      value={inviteCode}
+                      readOnly
+                      sx={{ flex: 1, fontFamily: 'monospace', fontWeight: 'bold', fontSize: 16, mr: 1 }}
+                    />
+                    <Button
+                      variant="soft"
+                      color={copied ? "success" : "neutral"}
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteCode);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1200);
+                      }}
+                      sx={{ minWidth: 40, px: 1 }}
+                    >
+                      copy
+                    </Button>
+                  </Box>
+                )}
+                {/* Defensive fallback if inviteCode is an object */}
+                {inviteCode && typeof inviteCode !== 'string' && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography color="danger">Invalid invite code format</Typography>
+                  </Box>
+                )}
+                <Typography level="body2" color="neutral">
+                  Copy this code and share it with the client to create a host in <b>{selectedOrg}</b>.
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                  <Button onClick={() => { setInviteModalOpen(false); setInviteError(''); setInviteCode(''); setCopied(false); }} variant="outlined">Close</Button>
+                </Box>
+              </ModalDialog>
+            </Modal>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
               <Input placeholder="Host Name" value={name} onChange={e => setName(e.target.value)} />
               <Input placeholder="Tags (comma separated)" value={tags} onChange={e => setTags(e.target.value)} />
               <Button onClick={handleAdd} variant="solid" loading={loading}>Add Host</Button>

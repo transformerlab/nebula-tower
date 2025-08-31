@@ -4,12 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 from nebula_api import NebulaAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from dependencies import limiter
 
 
 # Import the hosts router
 from routers.hosts_router import router as hosts_router
 from routers.lighthouse_router import router as lighthouse_router
 from routers.nebula_process_router import router as nebula_process_router
+from routers.client_router import router as client_router
 
 
 # Use FastAPI lifespan event for startup config
@@ -31,6 +36,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 # Include the hosts router under the 'admin' prefix, with dependency
 app.include_router(
     hosts_router,
@@ -46,6 +55,11 @@ app.include_router(
     nebula_process_router,
     prefix="/admin",
     dependencies=[Depends(check_admin_password)]
+)
+# Client router doesn't need admin auth
+app.include_router(
+    client_router,
+    prefix="/client"
 )
 
 # Allow CORS for all origins (for development)

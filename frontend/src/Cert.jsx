@@ -75,7 +75,7 @@ export default function Cert() {
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate Manager</Typography>
-      <Button onClick={handleRefresh} sx={{ mb: 2 }}>Refresh</Button>
+      <Button onClick={handleRefresh} sx={{ mb: 2 }}>Reload</Button>
       {loading ? <CircularProgress /> : (
         <>
           {caData && caData.cert ? (
@@ -84,7 +84,7 @@ export default function Cert() {
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData.cert}</pre>
               <Typography level="h4"><b>CA Key:</b> {caData.key_exists ? 'Exists' : 'Not found'}</Typography>
               {certInfo && certInfo.details && (
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 2, overflow: 'hidden', maxWidth: '500px' }}>
                   <Typography level="h4">Certificate Info</Typography>
                   <ul style={{ textAlign: 'left' }}>
                     <li><b>Name:</b> {certInfo.details.name}</li>
