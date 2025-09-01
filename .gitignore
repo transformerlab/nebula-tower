@@ -14,4 +14,4 @@ wheels/
 
 data/*
 .DS_Store
-.env
+/.env
