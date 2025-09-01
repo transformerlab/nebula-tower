@@ -96,13 +96,8 @@ async fn spawn_nebula(settings: &Settings) -> Result<tokio::process::Child> {
     let nebula = ensure_nebula().await?;
     #[cfg(target_os = "macos")]
     {
-        use std::os::unix::process::CommandExt;
-        // Properly escape paths for AppleScript
-        fn escape_applescript(s: &str) -> String {
-            s.replace("\\", "\\\\").replace("\"", "\\\"")
-        }
-        let nebula_path = escape_applescript(&nebula.display().to_string());
-        let config_path = escape_applescript(&settings.config_path.display().to_string());
+        let nebula_path = nebula.display().to_string();
+        let config_path = settings.config_path.display().to_string();
         let shell_cmd = format!("\"{}\" -config \"{}\"", nebula_path, config_path);
         let script = format!(
             "do shell script \"{}\" with administrator privileges",
@@ -208,17 +203,64 @@ async fn ping_once(host: &str) -> Result<u64> {
     Ok(ms)
 }
 
+fn required_files_present(settings: &Settings) -> bool {
+    // Check nebula binary
+    let nebula_bin = {
+        let local = app_dir().join("bin").join("nebula");
+        if local.exists() {
+            Some(local)
+        } else if let Ok(path) = which::which("nebula") {
+            Some(path)
+        } else {
+            None
+        }
+    };
+    if nebula_bin.is_none() {
+        return false;
+    }
+
+    // Check config.yaml
+    if !settings.config_path.exists() {
+        return false;
+    }
+
+    // Check host.key, host.crt, ca.crt in same dir as config
+    let config_dir = settings.config_path.parent().unwrap_or(&settings.config_path);
+    let host_key = config_dir.join("host.key");
+    let host_crt = config_dir.join("host.crt");
+    let ca_crt = config_dir.join("ca.crt");
+    if !host_key.exists() || !host_crt.exists() || !ca_crt.exists() {
+        return false;
+    }
+
+    // Check lighthouse IP
+    if settings.ping_host.trim().is_empty() {
+        return false;
+    }
+
+    true
+}
+
 fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
+    let settings = load_settings();
+    let requirements_ok = required_files_present(&settings);
     let toggle = if running { "Stop" } else { "Start" };
-    SystemTrayMenu::new()
-    .add_item(CustomMenuItem::new("toggle", toggle))
-    .add_item(CustomMenuItem::new(
+    let mut menu = SystemTrayMenu::new();
+    if running || requirements_ok {
+        menu = menu.add_item(CustomMenuItem::new("toggle", toggle));
+    }
+    menu
+        .add_item(CustomMenuItem::new(
             "status",
-            format!("Status: {}  |  Ping: {}ms", if running { "Running" } else { "Stopped" }, latency),
-    ).disabled())
-    .add_item(CustomMenuItem::new("settings", "Settings…"))
-    .add_item(CustomMenuItem::new("open_log", "Open Debug Log"))
-    .add_item(CustomMenuItem::new("install_nebula", "Install Nebula"))
+            format!(
+                "Status: {}  |  Ping: {}ms",
+                if running { "Running" } else { "Stopped" },
+                latency
+            ),
+        ).disabled())
+        .add_item(CustomMenuItem::new("settings", "Settings…"))
+        .add_item(CustomMenuItem::new("open_log", "Open Debug Log"))
+        .add_item(CustomMenuItem::new("install_nebula", "Install Nebula"))
 }
 
 fn debug_log<M: AsRef<str>>(msg: M) {
@@ -376,8 +418,28 @@ fn main() {
                 "open_log" => {
                     let path = app_dir().join("debug.log");
                     debug_log(format!("Opening debug log at {:?}", path));
-                    let url = format!("file://{}", path.display());
-                    let _ = tauri::api::shell::open(&app.shell_scope(), url, None);
+                    // Try to open the log file with the user's default text editor using std::process::Command as a fallback
+                    #[cfg(target_os = "macos")]
+                    {
+                        use std::process::Command;
+                        let _ = Command::new("open")
+                            .arg(&path)
+                            .spawn();
+                    }
+                    #[cfg(target_os = "linux")]
+                    {
+                        use std::process::Command;
+                        let _ = Command::new("xdg-open")
+                            .arg(&path)
+                            .spawn();
+                    }
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::process::Command;
+                        let _ = Command::new("cmd")
+                            .args(&["/C", "start", "", &path.to_string_lossy()])
+                            .spawn();
+                    }
                 }
                 "install_nebula" => {
                     debug_log("Tray clicked: Install Nebula");
@@ -440,7 +502,10 @@ fn main() {
             });
             Ok(())
         })
-    .invoke_handler(tauri::generate_handler![start_nebula, stop_nebula, get_status, open_settings_window, save_config, get_settings, hide_settings, install_nebula])
+        .invoke_handler(tauri::generate_handler![
+            start_nebula, stop_nebula, get_status, open_settings_window,
+            save_config, get_settings, hide_settings, install_nebula
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
