@@ -15,9 +15,9 @@ class ClientHostRequest(BaseModel):
     tags: list[str]
 
 
-@router.post("/api/client/create_host")
+@router.post("/api/client/redeem_invite")
 @limiter.limit("5/minute")
-async def create_host(req: ClientHostRequest, request: Request):
+async def create_host_using_invite(req: ClientHostRequest, request: Request):
     invite_code = sanitize_string(req.invite_code)
     name = sanitize_string(req.name)
     tags = [sanitize_string(t) for t in req.tags]
