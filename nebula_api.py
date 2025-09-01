@@ -1,11 +1,9 @@
 import subprocess
 import threading
-import signal
-import os
-from typing import Optional, Dict, Any
+from typing import Optional
 
 class NebulaAPI:
-    def __init__(self, nebula_path: str = './nebula', cert_path: str = './nebula-cert'):
+    def __init__(self, nebula_path: str = './bin/nebula', cert_path: str = './bin/nebula-cert'):
         self.nebula_path = nebula_path
         self.cert_path = cert_path
         self._nebula_proc: Optional[subprocess.Popen] = None

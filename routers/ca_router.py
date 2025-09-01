@@ -11,7 +11,7 @@ nebula = NebulaAPI()
 
 CA_CERT_PATH = "ca.crt"  # Adjust as needed
 CA_KEY_PATH = "ca.key"  # Adjust as needed
-CERTS_DIR = "../data/certs"
+CERTS_DIR = "./data/certs"
 
 # Compute cert_dir, cert_path, key_path once
 cert_dir = CERTS_DIR
