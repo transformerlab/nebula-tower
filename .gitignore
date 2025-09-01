@@ -1,7 +1,7 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
-build/
+/build/
 dist/
 wheels/
 *.egg-info
@@ -16,3 +16,28 @@ data/*
 .DS_Store
 /.env
 nebula.db
+
+# Node.js dependencies
+node_modules/
+dist/
+build/
+
+# Rust build artifacts
+src-tauri/target/
+client/nebula-tower-menubar-app/src-tauri/target/
+
+# Tauri mobile platform build artifacts (if applicable)
+gen/*/build/
+gen/*/DerivedData/
+
+# Environment files
+.env
+.env.*.local
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# Other common ignored files
+*.log
+*.tmp

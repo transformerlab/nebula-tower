@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/1",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "../index.html",
+    "distDir": ".."
+  },
+  "package": {
+    "productName": "Nebula Tower Menubar",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "shell": {
+        "all": false,
+        "execute": true,
+        "open": true,
+        "scope": [
+          {
+            "name": "nebula",
+            "cmd": "nebula",
+            "args": true
+          }
+        ]
+      },
+      "path": {
+        "all": true
+      },
+      "dialog": {
+        "message": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "com.transformerlab.nebula.tower.menubar",
+      "icon": [],
+      "macOS": {
+        "signingIdentity": null
+      }
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Nebula Tower",
+        "url": "../index.html",
+        "visible": false,
+        "width": 420,
+        "height": 340
+      },
+      {
+        "label": "settings",
+        "title": "Nebula Settings",
+        "url": "../settings.html",
+        "visible": false,
+        "width": 520,
+        "height": 420
+      }
+    ],
+    "systemTray": { "iconPath": "icons/trayIcon.png", "iconAsTemplate": true }
+  }
+}

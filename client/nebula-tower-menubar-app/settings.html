@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Nebula Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: -apple-system, system-ui, sans-serif;
+        padding: 16px;
+      }
+      label {
+        display: block;
+        margin-top: 12px;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 16px;
+        padding: 8px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Settings</h3>
+    <label>Config path</label>
+    <input id="config" placeholder="/path/to/config.yaml" />
+    <label>Ping host</label>
+    <input id="ping" placeholder="8.8.8.8" />
+    <div>
+      <button id="save">Save</button>
+      <button id="close">Close</button>
+    </div>
+    <script>
+      const invoke = window.__TAURI__.invoke;
+      async function load() {
+        try {
+          const s = await invoke("get_settings");
+          if (s && s.config_path)
+            document.getElementById("config").value = s.config_path;
+          if (s && s.ping_host)
+            document.getElementById("ping").value = s.ping_host;
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      document.getElementById("save").addEventListener("click", async () => {
+        const config = document.getElementById("config").value || "";
+        const ping = document.getElementById("ping").value || "8.8.8.8";
+        await invoke("save_config", { configPath: config, pingHost: ping });
+        await invoke("hide_settings");
+      });
+      document.getElementById("close").addEventListener("click", async () => {
+        await invoke("hide_settings");
+      });
+      load();
+    </script>
+  </body>
+</html>

@@ -21,7 +21,8 @@ fi
 
 if ! command -v nebula &> /dev/null; then
   NEBULA_VERSION="latest"
-  BASE_URL="https://github.com/slackhq/nebula/releases/${NEBULA_VERSION}/download/"
+  #  BASE_URL="https://github.com/slackhq/nebula/releases/${NEBULA_VERSION}/download/"
+  BASE_URL="https://github.com/NebulaOSS/nebula-nightly/releases/${NEBULA_VERSION}/download/"
 
   # Map OS/arch to filename and sha256
   case "$(uname -s)" in
