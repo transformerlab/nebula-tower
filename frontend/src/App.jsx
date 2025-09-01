@@ -1,23 +1,26 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import useSWR from 'swr';
-import { CssBaseline, Box, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator } from '@mui/joy';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { CssBaseline, Box, Divider, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator, Button, Avatar, Chip } from '@mui/joy';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import Cert from './Cert';
 import Hosts from './Hosts';
 import { Shield, Server, TowerControlIcon } from 'lucide-react';
 import Lighthouse from './Lighthouse';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
-import { AdminPasswordProvider } from './context/admin';
-import { useAdminPassword, useAdminFetcher } from './context/adminContext';
-import { AdminPasswordModal } from './components/AdminPasswordModal';
+import Login from './Login';
+import { useIsAuthenticated, useSignOut } from 'react-auth-kit';
+import { useAuthedFetcher } from './lib/api';
+import md5 from 'blueimp-md5';
 
 
 
 function Sidebar() {
-  const fetcher = useAdminFetcher();
+  const signOut = useSignOut();
+  const fetcher = useAuthedFetcher();
   const { data: caData } = useSWR(`${API_BASE_URL}/admin/api/ca`, fetcher);
   const { data: lhData } = useSWR(`${API_BASE_URL}/admin/api/lighthouse/config`, fetcher);
+  const { data: me } = useSWR(`${API_BASE_URL}/users/me`, fetcher);
 
   const certExists = !!caData?.exists && caData?.key_exists;
   const lighthouseConfigExists = !!lhData?.config;
@@ -42,6 +45,19 @@ function Sidebar() {
           </ListItem>
         ))}
       </List>
+      <Divider />
+      <Box sx={{ mt: 'auto' }}>
+        {me && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, mb: 1 }}>
+            <Avatar size="sm" src={`https://www.gravatar.com/avatar/${md5((me.email || '').trim().toLowerCase())}?d=identicon`} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Typography level="body-sm">{me.email}</Typography>
+              {me.is_superuser && <Chip size="sm" color="success" variant="soft">admin</Chip>}
+            </Box>
+          </Box>
+        )}
+        <Button variant="outlined" size="sm" color="neutral" onClick={() => signOut()}>Sign out</Button>
+      </Box>
     </Sheet>
   );
 }
@@ -66,32 +82,37 @@ function Home() {
   );
 }
 
+function RequireAuth({ children }) {
+  const isAuthenticated = useIsAuthenticated();
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  return children;
+}
+
 function App() {
-  const { adminPassword } = useAdminPassword();
-
   return (
-    <>
-      <AdminPasswordModal open={!adminPassword} />
-      <Router>
-        <CssBaseline />
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/cert" element={<Cert />} />
-            <Route path="/lighthouse" element={<Lighthouse />} />
-            <Route path="/hosts" element={<Hosts />} />
-          </Routes>
-        </MainLayout>
-      </Router>
-    </>
+    <Router>
+      <CssBaseline />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <MainLayout>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/cert" element={<Cert />} />
+                  <Route path="/lighthouse" element={<Lighthouse />} />
+                  <Route path="/hosts" element={<Hosts />} />
+                </Routes>
+              </MainLayout>
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
 
-export default function AppWithProvider() {
-  return (
-    <AdminPasswordProvider>
-      <App />
-    </AdminPasswordProvider>
-  );
-}
+export default App;
 

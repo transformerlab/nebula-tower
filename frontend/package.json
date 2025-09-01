@@ -13,9 +13,11 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/joy": "^5.0.0-beta.52",
+    "blueimp-md5": "^2.19.0",
     "ip6": "^0.2.11",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",
+    "react-auth-kit": "^2.12.7",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.2",
     "swr": "^2.3.6"

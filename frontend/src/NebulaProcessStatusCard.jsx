@@ -1,17 +1,17 @@
 import { Sheet, Card, Box, IconButton } from "@mui/joy"
-import useSWR, { mutate } from 'swr';
+import useSWR from 'swr';
 import API_BASE_URL from './apiConfig';
 import { PlayCircle, StopCircle } from "lucide-react";
 import { useState } from 'react';
-import { useAdminFetcher, useAdminPassword } from './context/adminContext';
+import { useAuthedFetcher, useAuthedFetch } from './lib/api';
 
 
 
 
 function NebulaProcessStatusCard({ disableButtons = false }) {
-    const fetcher = useAdminFetcher();
-    const { adminPassword } = useAdminPassword();
-    const { data, mutate, isLoading } = useSWR(
+    const fetcher = useAuthedFetcher();
+    const authedFetch = useAuthedFetch();
+    const { data, mutate } = useSWR(
         `${API_BASE_URL}/admin/api/nebula_process/status`,
         fetcher,
         { refreshInterval: 1500 }
@@ -22,12 +22,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStart = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/admin/api/nebula_process/start`, {
-                method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${adminPassword}`
-                }
-            })
+            await authedFetch(`/admin/api/nebula_process/start`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)
@@ -37,12 +32,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStop = async () => {
         setLoading(true)
         try {
-            await fetch(`${API_BASE_URL}/admin/api/nebula_process/stop`, {
-                method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${adminPassword}`
-                }
-            })
+            await authedFetch(`/admin/api/nebula_process/stop`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)

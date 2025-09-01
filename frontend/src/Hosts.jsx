@@ -3,7 +3,7 @@ import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
 import { Box, Button, Typography, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
-import { useAdminFetcher, useAdminPassword } from './context/adminContext';
+import { useAuthedFetcher, useAuthedFetch } from './lib/api';
 import HostDetailsModal from './HostDetailsModal';
 
 
@@ -44,17 +44,17 @@ function formatHostIP(ip) {
         </Box>
       </Box>
     );
-  } catch (error) {
+  } catch {
     console.error('Invalid IPv6 address:', ip);
     return <Typography color="danger">Invalid IP</Typography>;
   }
 }
 
 function Hosts() {
-  const fetcher = useAdminFetcher();
-  const { adminPassword } = useAdminPassword();
+  const fetcher = useAuthedFetcher();
+  const authedFetch = useAuthedFetch();
   const [selectedOrg, setSelectedOrg] = useState('');
-  const [hostsFilter, setHostsFilter] = useState(''); // not used, but for future
+  // const [hostsFilter, setHostsFilter] = useState(''); // reserved for future filtering
   const [name, setName] = useState('');
   const [tags, setTags] = useState(''); // comma separated
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ function Hosts() {
   const [copied, setCopied] = useState(false);
 
   // SWR for orgs
-  const { data: orgsData, error: orgsError, isLoading: orgsLoading } = useSWR(
+  const { data: orgsData } = useSWR(
     `${API_BASE_URL}/admin/api/orgs`,
     fetcher
   );
@@ -80,7 +80,7 @@ function Hosts() {
   const selectedOrgSubnet = orgs.find(o => o.name === selectedOrg)?.subnet || '';
 
   // SWR for hosts in selected org
-  const { data: hostsData, error: hostsError, isLoading: hostsLoading } = useSWR(
+  const { data: hostsData } = useSWR(
     selectedOrg ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts` : null,
     fetcher
   );
@@ -95,12 +95,9 @@ function Hosts() {
     }
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/api/hosts/new`, {
+      const resp = await authedFetch(`/admin/api/hosts/new`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminPassword}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           org: selectedOrg,
           name,
@@ -127,12 +124,9 @@ function Hosts() {
     }
     setOrgCreateLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/api/orgs/new`, {
+      const resp = await authedFetch(`/admin/api/orgs/new`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminPassword}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newOrgName.trim() })
       });
       const data = await resp.json();
@@ -157,12 +151,9 @@ function Hosts() {
       return;
     }
     try {
-      const resp = await fetch(`${API_BASE_URL}/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
+      const resp = await authedFetch(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminPassword}`
-        }
+        headers: { 'Content-Type': 'application/json' }
         // No body needed, org is passed as query param
       });
       const data = await resp.json();

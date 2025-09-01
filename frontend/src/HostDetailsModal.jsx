@@ -1,11 +1,11 @@
 import useSWR from 'swr';
 import { Box, Button, Typography, Divider, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose, Chip } from '@mui/joy';
 
-import { useAdminFetcher } from './context/adminContext';
+import { useAuthedFetcher } from './lib/api';
 import API_BASE_URL from './apiConfig';
 
 export default function HostDetailsModal({ selectedHost, selectedOrg, onClose }) {
-    const fetcher = useAdminFetcher();
+    const fetcher = useAuthedFetcher();
     const { data: hostDetailsData, error: hostDetailsError, isLoading: hostDetailsLoading } = useSWR(
         selectedHost && selectedOrg
             ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
@@ -21,7 +21,7 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
     if (typeof certs === 'string') {
         try {
             certs = JSON.parse(certs);
-        } catch (e) {
+        } catch {
             certs = null;
         }
     }

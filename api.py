@@ -15,21 +15,99 @@ from routers.nebula_process_router import router as nebula_process_router
 from routers.client_router import router as client_router
 from routers.ca_router import router as ca_router
 
+# --- FastAPI Users imports & setup (new) ---
+from typing import Optional, AsyncGenerator
+import uuid
+from fastapi import Request
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import declarative_base
+from fastapi_users import FastAPIUsers
+from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
+from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from fastapi_users.manager import BaseUserManager, UUIDIDMixin
+
+# Database (async SQLAlchemy)
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./nebula.db")
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
+Base = declarative_base()
+
+# User table
+class User(SQLAlchemyBaseUserTableUUID, Base):
+    pass  # email, hashed_password, is_active, is_superuser, is_verified are inherited
+
+# Pydantic schemas
+class UserRead(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    is_active: bool
+    is_superuser: bool
+    is_verified: bool
+
+    class Config:
+        from_attributes = True
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+# Dependencies to provide DB and user manager
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
+
+async def get_user_db(session: AsyncSession = Depends(get_async_session)):
+    yield SQLAlchemyUserDatabase(session, User)
+
+class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
+    reset_password_token_secret = os.environ.get("JWT_SECRET", "CHANGE_ME")
+    verification_token_secret = os.environ.get("JWT_SECRET", "CHANGE_ME")
+
+    async def on_after_register(self, user: User, request: Optional[Request] = None):
+        # Optional: send welcome/verification email, audit log, etc.
+        pass
+
+async def get_user_manager(user_db=Depends(get_user_db)):
+    yield UserManager(user_db)
+
+# Auth backend (JWT)
+bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+
+def get_jwt_strategy() -> JWTStrategy:
+    secret = os.environ.get("JWT_SECRET", "CHANGE_ME")
+    lifetime = int(os.environ.get("JWT_LIFETIME", "3600"))
+    return JWTStrategy(secret=secret, lifetime_seconds=lifetime)
+
+auth_backend = AuthenticationBackend(
+    name="jwt",
+    transport=bearer_transport,
+    get_strategy=get_jwt_strategy,
+)
+
+fastapi_users = FastAPIUsers[User, uuid.UUID](
+    get_user_manager,
+    [auth_backend],
+)
+
+current_active_user = fastapi_users.current_user(active=True)
+current_superuser = fastapi_users.current_user(active=True, superuser=True)
+# --- end FastAPI Users setup ---
 
 # Use FastAPI lifespan event for startup config
 @asynccontextmanager
 async def lifespan(app):
+    # Create DB tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
-
-def check_admin_password(authorization: str = Header(None)):
-    expected = os.environ.get("ADMIN_PASSWORD")
-    if not expected:
-        raise HTTPException(status_code=500, detail="ADMIN_PASSWORD not set in environment.")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
-    token = authorization.removeprefix("Bearer ").strip()
-    if token != expected:
-        raise HTTPException(status_code=401, detail="Invalid admin password.")
 
 app = FastAPI(
     lifespan=lifespan
@@ -38,27 +116,59 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# --- FastAPI Users routers (new) ---
+# Auth endpoints (login/logout with JWT)
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+# Registration
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+# Password reset
+app.include_router(
+    fastapi_users.get_reset_password_router(),
+    prefix="/auth",
+    tags=["auth"],
+)
+# Email verification
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
+# Users management (superuser-only by default)
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
+# --- end new routers ---
 
-# Include the hosts router under the 'admin' prefix, with dependency
+# Include the hosts router under the 'admin' prefix, secured by superuser
 app.include_router(
     hosts_router,
     prefix="/admin",
-    dependencies=[Depends(check_admin_password)]
+    dependencies=[Depends(current_superuser)]
 )
 app.include_router(
     ca_router,
     prefix="/admin",
-    dependencies=[Depends(check_admin_password)]
+    dependencies=[Depends(current_superuser)]
 )
 app.include_router(
     lighthouse_router,
     prefix="/admin",
-    dependencies=[Depends(check_admin_password)]
+    dependencies=[Depends(current_superuser)]
 )
 app.include_router(
     nebula_process_router,
     prefix="/admin",
-    dependencies=[Depends(check_admin_password)]
+    dependencies=[Depends(current_superuser)]
 )
 
 # Client router doesn't need admin auth
@@ -76,7 +186,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/admin/api/ping", dependencies=[Depends(check_admin_password)])
+@app.get("/admin/api/ping", dependencies=[Depends(current_superuser)])
 def ping():
     return {"status": "ok"}
 

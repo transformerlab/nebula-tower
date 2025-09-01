@@ -2,11 +2,11 @@ import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import { Box, Button, Input, Typography, Sheet, CircularProgress, Alert } from '@mui/joy';
-import { useAdminFetcher, useAdminPassword } from './context/adminContext';
+import { useAuthedFetcher, useAuthedFetch } from './lib/api';
 
 export default function Cert() {
-  const fetcher = useAdminFetcher();
-  const { adminPassword } = useAdminPassword();
+  const fetcher = useAuthedFetcher();
+  const authedFetch = useAuthedFetch();
 
   const [orgName, setOrgName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -33,7 +33,7 @@ export default function Cert() {
         ? JSON.parse(infoData.info)
         : infoData.info;
       certInfo = Array.isArray(parsedArr) && parsedArr.length > 0 ? parsedArr[0] : null;
-    } catch (e) {
+    } catch {
       certInfo = null;
     }
   }
@@ -48,12 +48,9 @@ export default function Cert() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/api/ca`, {
+      const res = await authedFetch(`/admin/api/ca`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminPassword}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: orgName })
       });
       if (res.ok) {
@@ -64,7 +61,7 @@ export default function Cert() {
         const err = await res.json();
         setError(err.detail || 'Failed to create CA cert.');
       }
-    } catch (e) {
+    } catch {
       setError('Failed to create CA cert.');
     }
     setCreating(false);

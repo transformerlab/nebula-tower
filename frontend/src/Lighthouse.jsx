@@ -2,11 +2,11 @@ import useSWR, { mutate } from 'swr';
 import { useState } from 'react';
 import { Box, Typography, Sheet, CircularProgress, Alert, Button } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
-import { useAdminFetcher, useAdminPassword } from './context/adminContext';
+import { useAuthedFetcher, useAuthedFetch } from './lib/api';
 
 export default function Lighthouse() {
-  const fetcher = useAdminFetcher();
-  const { adminPassword } = useAdminPassword();
+  const fetcher = useAuthedFetcher();
+  const authedFetch = useAuthedFetch();
   const { data: config, error, isLoading } = useSWR(
     `${API_BASE_URL}/admin/api/lighthouse/config`,
     fetcher
@@ -21,18 +21,15 @@ export default function Lighthouse() {
     setRecreateLoading(true);
     setRecreateError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/api/lighthouse/create_config`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminPassword}`
-        }
+      const res = await authedFetch(`/admin/api/lighthouse/create_config`, {
+        method: 'POST'
       });
       if (!res.ok) {
         setRecreateError('Failed to recreate config');
       } else {
         mutate(`${API_BASE_URL}/admin/api/lighthouse/config`);
       }
-    } catch (e) {
+    } catch {
       setRecreateError('Failed to recreate config');
     }
     setRecreateLoading(false);

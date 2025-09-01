@@ -6,6 +6,11 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "dotenv>=0.9.9",
+    "fastapi-users[sqlalchemy]>=14.0.1",
+    "passlib[bcrypt]>=1.7.4",
+    "python-dotenv>=1.1.1",
+    "python-jose[cryptography]>=3.5.0",
     "slowapi>=0.1.9",
+    "sqlalchemy[aiosqlite]>=2.0.43",
     "uvicorn>=0.35.0",
 ]
