@@ -261,6 +261,7 @@ fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
         .add_item(CustomMenuItem::new("settings", "Settings…"))
         .add_item(CustomMenuItem::new("open_log", "Open Debug Log"))
         .add_item(CustomMenuItem::new("install_nebula", "Install Nebula"))
+        .add_item(CustomMenuItem::new("quit", "Quit")) // <-- Add quit item
 }
 
 fn debug_log<M: AsRef<str>>(msg: M) {
@@ -450,6 +451,9 @@ fn main() {
                             debug_log("Install nebula completed successfully");
                         }
                     });
+                }
+                "quit" => {
+                    std::process::exit(0);
                 }
                 _ => {}
             },
