@@ -27,37 +27,63 @@
   </head>
   <body>
     <h3>Settings</h3>
-    <label>Config path</label>
-    <input id="config" placeholder="/path/to/config.yaml" />
-    <label>Ping host</label>
-    <input id="ping" placeholder="8.8.8.8" />
+    <label for="ping">Lighthouse IP Address</label>
+    <input id="ping" placeholder="162.120.79.120" />
     <div>
       <button id="save">Save</button>
       <button id="close">Close</button>
     </div>
+    <div id="error" style="color: red; margin-top: 10px"></div>
     <script>
-      const invoke = window.__TAURI__.invoke;
-      async function load() {
-        try {
-          const s = await invoke("get_settings");
-          if (s && s.config_path)
-            document.getElementById("config").value = s.config_path;
-          if (s && s.ping_host)
-            document.getElementById("ping").value = s.ping_host;
-        } catch (e) {
-          /* ignore */
+      // Wait for both DOM and Tauri to be ready
+      function ready(fn) {
+        if (
+          document.readyState === "complete" ||
+          document.readyState === "interactive"
+        ) {
+          if (window.__TAURI__ && window.__TAURI__.invoke) {
+            fn();
+          } else {
+            setTimeout(() => ready(fn), 50);
+          }
+        } else {
+          document.addEventListener("DOMContentLoaded", () => ready(fn));
         }
       }
-      document.getElementById("save").addEventListener("click", async () => {
-        const config = document.getElementById("config").value || "";
-        const ping = document.getElementById("ping").value || "8.8.8.8";
-        await invoke("save_config", { configPath: config, pingHost: ping });
-        await invoke("hide_settings");
+
+      ready(() => {
+        const invoke = window.__TAURI__.invoke;
+        async function load() {
+          try {
+            const s = await invoke("get_settings");
+            if (s && s.config_path)
+              document.getElementById("config").value = s.config_path;
+            if (s && s.ping_host)
+              document.getElementById("ping").value = s.ping_host;
+          } catch (e) {
+            document.getElementById("error").textContent =
+              "Failed to load settings";
+          }
+        }
+        document.getElementById("save").addEventListener("click", async () => {
+          const config = document.getElementById("config").value || "";
+          const ping = document.getElementById("ping").value || "8.8.8.8";
+          try {
+            await invoke("save_config", {
+              config_path: config,
+              ping_host: ping,
+            });
+            await invoke("hide_settings");
+          } catch (e) {
+            document.getElementById("error").textContent =
+              "Failed to save settings";
+          }
+        });
+        document.getElementById("close").addEventListener("click", async () => {
+          await invoke("hide_settings");
+        });
+        load();
       });
-      document.getElementById("close").addEventListener("click", async () => {
-        await invoke("hide_settings");
-      });
-      load();
     </script>
   </body>
 </html>
