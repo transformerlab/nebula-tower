@@ -4,7 +4,7 @@ import { CssBaseline, Box, Divider, Typography, Sheet, List, ListItem, ListItemB
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import Cert from './Cert';
 import Hosts from './Hosts';
-import { Shield, Server, TowerControlIcon } from 'lucide-react';
+import { Shield, Server, TowerControlIcon, Users as UsersIcon } from 'lucide-react';
 import Lighthouse from './Lighthouse';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
@@ -12,6 +12,7 @@ import Login from './Login';
 import { useIsAuthenticated, useSignOut } from 'react-auth-kit';
 import { useAuthedFetcher } from './lib/api';
 import md5 from 'blueimp-md5';
+import Users from './Users';
 
 
 
@@ -30,6 +31,7 @@ function Sidebar() {
     { label: 'Lighthouse', to: '/lighthouse', icon: <TowerControlIcon size={20} />, disabled: !certExists },
     { label: 'Hosts', to: '/hosts', icon: <Server size={20} />, disabled: !lighthouseConfigExists },
     { label: 'Primary Cert', to: '/cert', icon: <Shield size={20} />, disabled: false },
+    ...(me?.is_superuser ? [{ label: 'Users', to: '/users', icon: <UsersIcon size={20} />, disabled: false }] : []),
   ];
   return (
     <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
@@ -104,6 +106,7 @@ function App() {
                   <Route path="/cert" element={<Cert />} />
                   <Route path="/lighthouse" element={<Lighthouse />} />
                   <Route path="/hosts" element={<Hosts />} />
+                  <Route path="/users" element={<Users />} />
                 </Routes>
               </MainLayout>
             </RequireAuth>

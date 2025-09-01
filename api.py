@@ -22,6 +22,7 @@ from fastapi import Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import select
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
@@ -189,4 +190,66 @@ app.add_middleware(
 @app.get("/admin/api/ping", dependencies=[Depends(current_superuser)])
 def ping():
     return {"status": "ok"}
+
+# --- Admin Users Management (list/update/delete) ---
+class AdminUserUpdate(BaseModel):
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+class AdminUserRead(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    is_active: bool
+    is_superuser: bool
+    is_verified: bool
+
+    class Config:
+        from_attributes = True
+
+@app.get("/admin/api/users", response_model=list[AdminUserRead], dependencies=[Depends(current_superuser)])
+async def list_users(session: AsyncSession = Depends(get_async_session)):
+    result = await session.execute(select(User))
+    users = result.scalars().all()
+    return users
+
+@app.patch("/admin/api/users/{user_id}", response_model=AdminUserRead, dependencies=[Depends(current_superuser)])
+async def update_user(user_id: uuid.UUID, payload: AdminUserUpdate, session: AsyncSession = Depends(get_async_session), user_db=Depends(get_user_db), user_manager=Depends(get_user_manager)):
+    # Load user
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update fields
+    to_update = {}
+    if payload.is_active is not None:
+        to_update["is_active"] = payload.is_active
+    if payload.is_superuser is not None:
+        to_update["is_superuser"] = payload.is_superuser
+    if payload.is_verified is not None:
+        to_update["is_verified"] = payload.is_verified
+    if payload.password:
+        # Hash password using the same helper as the app manager
+        hashed = user_manager.password_helper.hash(payload.password)
+        to_update["hashed_password"] = hashed
+
+    if to_update:
+        for k, v in to_update.items():
+            setattr(user, k, v)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+    return user
+
+@app.delete("/admin/api/users/{user_id}", dependencies=[Depends(current_superuser)])
+async def delete_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_async_session)):
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.delete(user)
+    await session.commit()
+    return {"status": "deleted"}
+# --- end Admin Users Management ---
 
