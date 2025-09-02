@@ -2,9 +2,9 @@
   "$schema": "https://schema.tauri.app/config/1",
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "",
+    "beforeBuildCommand": "cp settings.html frontend/",
     "devPath": "..",
-    "distDir": ".."
+    "distDir": "../frontend/"
   },
   "package": {
     "productName": "Nebula Tower Menubar",
