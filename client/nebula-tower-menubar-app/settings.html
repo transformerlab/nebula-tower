@@ -12,77 +12,374 @@
       label {
         display: block;
         margin-top: 12px;
-        font-weight: 600;
       }
       input {
+        margin-top: 4px;
         width: 100%;
-        padding: 8px;
-        box-sizing: border-box;
       }
-      button {
-        margin-top: 16px;
-        padding: 8px 12px;
+      #confirm-modal {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.35);
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      #confirm-modal .box {
+        background: #fff;
+        padding: 16px;
+        border-radius: 8px;
+        max-width: 420px;
+        width: 90%;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+      }
+      #confirm-modal .buttons {
+        margin-top: 12px;
+        text-align: right;
+      }
+      #confirm-modal button {
+        margin-left: 8px;
+      }
+      #invoke-status {
+        margin-top: 8px;
+        color: #856404;
+      }
+      #invoke-status.error {
+        color: #721c24;
+      }
+      #invoke-status.success {
+        color: #155724;
       }
     </style>
   </head>
   <body>
-    <h3>Settings</h3>
-    <label for="ping">Lighthouse IP Address</label>
-    <input id="ping" placeholder="162.120.79.120" />
-    <div>
-      <button id="save">Save</button>
+    <h3>Join a Lighthouse</h3>
+    <p>
+      Enter the lighthouse public IP and an invite code to retrieve your
+      certs/config.
+    </p>
+    <label for="lighthouse">Lighthouse Public IP Address:</label>
+    <input id="lighthouse" placeholder="162.120.79.120" />
+    <label for="invite-code">Invite Code:</label>
+    <input id="invite-code" placeholder="932fa1231" />
+    <div style="margin-top: 12px">
+      <button id="submit">Submit</button>
       <button id="close">Close</button>
     </div>
     <div id="error" style="color: red; margin-top: 10px"></div>
+    <div id="info" style="color: green; margin-top: 10px"></div>
+    <div id="invoke-status"></div>
+
+    <!-- Non-blocking confirmation modal (hidden by default) -->
+    <div id="confirm-modal" role="dialog" aria-modal="true">
+      <div class="box">
+        <div id="confirm-message">Are you sure?</div>
+        <div class="buttons">
+          <button id="confirm-cancel">No</button>
+          <button id="confirm-ok">Yes</button>
+        </div>
+      </div>
+    </div>
+
     <script>
-      // Wait for both DOM and Tauri to be ready
       function ready(fn) {
         if (
           document.readyState === "complete" ||
           document.readyState === "interactive"
-        ) {
-          if (window.__TAURI__ && window.__TAURI__.invoke) {
-            fn();
-          } else {
-            setTimeout(() => ready(fn), 50);
-          }
-        } else {
-          document.addEventListener("DOMContentLoaded", () => ready(fn));
-        }
+        )
+          fn();
+        else document.addEventListener("DOMContentLoaded", fn);
       }
 
       ready(() => {
-        const invoke = window.__TAURI__.invoke;
-        async function load() {
-          try {
-            const s = await invoke("get_settings");
-            if (s && s.config_path)
-              document.getElementById("config").value = s.config_path;
-            if (s && s.ping_host)
-              document.getElementById("ping").value = s.ping_host;
-          } catch (e) {
-            document.getElementById("error").textContent =
-              "Failed to load settings";
-          }
+        const submitBtn = document.getElementById("submit");
+        const statusEl = document.getElementById("invoke-status");
+
+        // Check all known possible locations for the invoke function
+        function getInvoke() {
+          // Try direct access patterns
+          if (window.__TAURI__ && typeof window.__TAURI__.invoke === "function")
+            return window.__TAURI__.invoke;
+          if (window.tauri && typeof window.tauri.invoke === "function")
+            return window.tauri.invoke;
+          if (typeof window.invoke === "function") return window.invoke;
+
+          // Try in case it's exposed through global
+          if (typeof invoke === "function") return invoke;
+
+          // Look for alternate forms that might be available
+          if (
+            window.__TAURI_INVOKE__ &&
+            typeof window.__TAURI_INVOKE__ === "function"
+          )
+            return window.__TAURI_INVOKE__;
+
+          // Return null if nothing found
+          return null;
         }
-        document.getElementById("save").addEventListener("click", async () => {
-          const config = document.getElementById("config").value || "";
-          const ping = document.getElementById("ping").value || "8.8.8.8";
-          try {
-            await invoke("save_config", {
-              config_path: config,
-              ping_host: ping,
-            });
-            await invoke("hide_settings");
-          } catch (e) {
-            document.getElementById("error").textContent =
-              "Failed to save settings";
+
+        // Force timeout to be very long - 10 seconds
+        async function waitForInvoke(timeout = 10000) {
+          const start = Date.now();
+          while (Date.now() - start < timeout) {
+            const inv = getInvoke();
+            if (inv) {
+              console.log("Found invoke API:", inv);
+              return inv;
+            }
+            await new Promise((r) => setTimeout(r, 50));
           }
-        });
+          throw new Error("Tauri invoke API not available");
+        }
+
+        // Last-resort approach - attempt to define our own invoke if missing
+        function createFallbackInvoke() {
+          // Try using __TAURI_IPC__ if available
+          if (
+            window.__TAURI_IPC__ &&
+            typeof window.__TAURI_IPC__.postMessage === "function"
+          ) {
+            return function invoke(cmd, args) {
+              return new Promise((resolve, reject) => {
+                const msgId = `${Date.now()}-${Math.random()}`;
+
+                function listener(event) {
+                  let data;
+                  try {
+                    data =
+                      typeof event.data === "string"
+                        ? JSON.parse(event.data)
+                        : event.data;
+                  } catch (e) {
+                    return; // Not our message
+                  }
+
+                  if (data && data.id === msgId) {
+                    window.removeEventListener("message", listener);
+                    if (data.error) reject(new Error(data.error));
+                    else resolve(data.result);
+                  }
+                }
+
+                window.addEventListener("message", listener);
+                window.__TAURI_IPC__.postMessage(
+                  JSON.stringify({
+                    cmd,
+                    args,
+                    id: msgId,
+                  })
+                );
+              });
+            };
+          }
+          return null;
+        }
+
+        async function callInvoke(cmd, args) {
+          const inv = getInvoke() || (await waitForInvoke());
+          if (!inv) throw new Error("Could not find Tauri invoke API");
+          return inv(cmd, args);
+        }
+
+        // Check more frequently with a shorter interval
+        function monitorInvoke() {
+          if (window.__monitoringInvoke) return;
+          window.__monitoringInvoke = true;
+
+          let attempts = 0;
+          const checkInterval = setInterval(() => {
+            attempts++;
+
+            // Try to find the invoke function
+            const inv = getInvoke();
+            if (inv) {
+              statusEl.textContent = "Connected to native API.";
+              statusEl.className = "success";
+              submitBtn.disabled = false;
+              clearInterval(checkInterval);
+              return;
+            }
+
+            // After 10 attempts, try the fallback approach
+            if (attempts === 10) {
+              const fallback = createFallbackInvoke();
+              if (fallback) {
+                // Inject our fallback into all the standard locations
+                if (!window.__TAURI__) window.__TAURI__ = {};
+                window.__TAURI__.invoke = fallback;
+                window.invoke = fallback;
+
+                statusEl.textContent = "Using fallback API connection.";
+                statusEl.className = "success";
+                submitBtn.disabled = false;
+                clearInterval(checkInterval);
+              }
+            }
+
+            // After 20 attempts (10 seconds), show a more detailed error
+            if (attempts === 20) {
+              statusEl.innerHTML = `
+                <strong>Cannot connect to Nebula</strong><br>
+                If you're seeing this message repeatedly, try:
+                <ul>
+                  <li>Restarting the app</li>
+                  <li>Checking for updates</li>
+                  <li>Ensuring you're opening this from the Nebula app</li>
+                </ul>
+                <button id="retry-btn">Try Again</button>
+              `;
+              statusEl.className = "error";
+
+              const retryBtn = document.getElementById("retry-btn");
+              if (retryBtn) {
+                retryBtn.addEventListener("click", () => {
+                  statusEl.textContent = "Reconnecting...";
+                  statusEl.className = "";
+                  attempts = 0; // Reset attempts
+                });
+              }
+            }
+          }, 500);
+        }
+
+        // Non-blocking confirm: returns a Promise<boolean>
+        function showConfirm(message) {
+          return new Promise((resolve) => {
+            const modal = document.getElementById("confirm-modal");
+            const msgEl = document.getElementById("confirm-message");
+            const ok = document.getElementById("confirm-ok");
+            const cancel = document.getElementById("confirm-cancel");
+
+            let cleaned = false;
+            function cleanup(result) {
+              if (cleaned) return;
+              cleaned = true;
+              modal.style.display = "none";
+              ok.removeEventListener("click", onOk);
+              cancel.removeEventListener("click", onCancel);
+              document.removeEventListener("keydown", onKey);
+              resolve(result);
+            }
+
+            function onOk() {
+              cleanup(true);
+            }
+            function onCancel() {
+              cleanup(false);
+            }
+            function onKey(e) {
+              if (e.key === "Escape") cleanup(false);
+              if (e.key === "Enter") cleanup(true);
+            }
+
+            msgEl.textContent = message;
+            modal.style.display = "flex";
+            ok.addEventListener("click", onOk);
+            cancel.addEventListener("click", onCancel);
+            document.addEventListener("keydown", onKey, { once: true });
+          });
+        }
+
+        async function init() {
+          submitBtn.disabled = true;
+          statusEl.textContent = "Checking for native API...";
+          statusEl.className = "";
+
+          // Start monitoring immediately, don't wait for failure
+          monitorInvoke();
+
+          try {
+            const inv = await waitForInvoke();
+            statusEl.textContent = "Connected to native API.";
+            statusEl.className = "success";
+            submitBtn.disabled = false;
+
+            // Try to pre-fill data if we can
+            try {
+              const s = await callInvoke("get_settings");
+              if (s && s.ping_host)
+                document.getElementById("lighthouse").value = s.ping_host;
+            } catch (e) {
+              console.warn("Failed to load settings:", e);
+            }
+          } catch (e) {
+            console.error("Failed to connect to Tauri API:", e);
+            // Monitor is already running, it will handle UI updates
+          }
+
+          // ensure modal is hidden/reset when initializing/re-opening
+          const modal = document.getElementById("confirm-modal");
+          if (modal) modal.style.display = "none";
+        }
+
+        document
+          .getElementById("submit")
+          .addEventListener("click", async () => {
+            const ip = document.getElementById("lighthouse").value.trim();
+            const code = document.getElementById("invite-code").value.trim();
+            const err = document.getElementById("error");
+            const info = document.getElementById("info");
+            err.textContent = "";
+            info.textContent = "";
+            if (!ip) {
+              err.textContent = "Please provide a lighthouse IP.";
+              return;
+            }
+            if (!code) {
+              err.textContent = "Please provide an invite code.";
+              return;
+            }
+            try {
+              const s = await callInvoke("get_settings");
+              const cfg = s && s.config_path ? s.config_path : null;
+              let exists = false;
+              if (cfg) {
+                exists = await callInvoke("check_existing_certs", {
+                  configPath: cfg,
+                });
+              }
+              let overwrite = false;
+              if (exists) {
+                overwrite = await showConfirm(
+                  "Existing certs/config detected. Proceeding will overwrite them. Continue?"
+                );
+                if (!overwrite) {
+                  info.textContent = "Redeem cancelled by user.";
+                  return;
+                }
+              }
+              info.textContent =
+                "Contacting lighthouse and downloading files...";
+              await callInvoke("redeem_invite", {
+                lighthouseIp: ip, // Changed from lighthouse_ip to lighthouseIp
+                inviteCode: code, // Changed from invite_code to inviteCode
+                overwrite,
+              });
+              if (s) {
+                await callInvoke("save_config", {
+                  config_path: s.config_path,
+                  ping_host: ip,
+                });
+              }
+              info.textContent =
+                "Invite redeemed and files saved. You can now start the daemon.";
+            } catch (e) {
+              err.textContent = e && e.message ? e.message : JSON.stringify(e);
+            }
+          });
+
         document.getElementById("close").addEventListener("click", async () => {
-          await invoke("hide_settings");
+          document.getElementById("confirm-modal").style.display = "none";
+          try {
+            await callInvoke("hide_settings");
+          } catch {}
         });
-        load();
+
+        init();
       });
     </script>
   </body>

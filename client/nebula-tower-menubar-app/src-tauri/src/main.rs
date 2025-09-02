@@ -11,6 +11,10 @@ use tokio::{
     process::Command,
     time,
 };
+use reqwest::Client;
+use std::io::Cursor;
+use zip::ZipArchive;
+use tempfile::NamedTempFile;
 
 static STATE: Lazy<Mutex<AppState>> = Lazy::new(|| Mutex::new(AppState::default()));
 
@@ -203,19 +207,39 @@ async fn ping_once(host: &str) -> Result<u64> {
     Ok(ms)
 }
 
-fn required_files_present(settings: &Settings) -> bool {
-    // Check nebula binary
-    let nebula_bin = {
-        let local = app_dir().join("bin").join("nebula");
-        if local.exists() {
-            Some(local)
-        } else if let Ok(path) = which::which("nebula") {
-            Some(path)
+// Add a helper to check for nebula binary and get its version
+fn nebula_bin_path() -> Option<PathBuf> {
+    let local = app_dir().join("bin").join("nebula");
+    if local.exists() {
+        Some(local)
+    } else if let Ok(path) = which::which("nebula") {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+fn nebula_version() -> Option<String> {
+    let bin = nebula_bin_path()?;
+    let output = std::process::Command::new(bin)
+        .arg("-version")
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !s.is_empty() {
+            Some(s)
         } else {
             None
         }
-    };
-    if nebula_bin.is_none() {
+    } else {
+        None
+    }
+}
+
+fn required_files_present(settings: &Settings) -> bool {
+    // Check nebula binary
+    if nebula_bin_path().is_none() {
         return false;
     }
 
@@ -241,14 +265,161 @@ fn required_files_present(settings: &Settings) -> bool {
     true
 }
 
+// New helper: check only config/certs, not nebula binary
+fn config_and_certs_present(settings: &Settings) -> bool {
+    // Check config.yaml
+    if !settings.config_path.exists() {
+        return false;
+    }
+    // Check host.key, host.crt, ca.crt in same dir as config
+    let config_dir = settings.config_path.parent().unwrap_or(&settings.config_path);
+    let host_key = config_dir.join("host.key");
+    let host_crt = config_dir.join("host.crt");
+    let ca_crt = config_dir.join("ca.crt");
+    if !host_key.exists() || !host_crt.exists() || !ca_crt.exists() {
+        return false;
+    }
+    // Check lighthouse IP
+    if settings.ping_host.trim().is_empty() {
+        return false;
+    }
+    true
+}
+
+#[tauri::command]
+async fn check_existing_certs(config_path: String) -> Result<bool, String> {
+    let cfg = PathBuf::from(config_path);
+    if !cfg.exists() { return Ok(false); }
+    let dir = cfg.parent().unwrap_or(&cfg);
+    let host_key = dir.join("host.key");
+    let host_crt = dir.join("host.crt");
+    let ca_crt = dir.join("ca.crt");
+    Ok(host_key.exists() || host_crt.exists() || ca_crt.exists())
+}
+
+// Redeem an invite by contacting the lighthouse at {ip}/api/client/redeem_invite?invite_code=...
+// Response is expected to be a zip file containing certs and config; unzip into app_dir()
+#[tauri::command]
+async fn redeem_invite(lighthouse_ip: String, invite_code: String, overwrite: bool) -> Result<(), String> {
+    let client = Client::builder().timeout(std::time::Duration::from_secs(30)).build().map_err(|e| e.to_string())?;
+    let url = format!("http://{}/api/client/redeem_invite?invite_code={}", lighthouse_ip, invite_code);
+    debug_log(format!("Redeeming invite at {}", url));
+
+    let resp = client.get(&url).send().await.map_err(|e| {
+        debug_log(format!("Failed to send redeem request: {}", e));
+        e.to_string()
+    })?;
+    debug_log(format!("Received response with status: {}", resp.status()));
+
+    if !resp.status().is_success() {
+        debug_log(format!("Redeem request failed with status: {}", resp.status()));
+        return Err(format!("Redeem request failed: {}", resp.status()));
+    }
+
+    // Read response bytes
+    let bytes = resp.bytes().await.map_err(|e| {
+        debug_log(format!("Failed to read response bytes: {}", e));
+        e.to_string()
+    })?;
+    debug_log(format!("Successfully read response bytes, size: {}", bytes.len()));
+
+    // Save to a temp file then open as zip
+    let mut tmp = NamedTempFile::new().map_err(|e| {
+        debug_log(format!("Failed to create temporary file: {}", e));
+        e.to_string()
+    })?;
+    debug_log(format!("Temporary file created at: {}", tmp.path().display()));
+
+    std::io::copy(&mut bytes.as_ref(), &mut tmp).map_err(|e| {
+        debug_log(format!("Failed to write response bytes to temporary file: {}", e));
+        e.to_string()
+    })?;
+    debug_log("Response bytes successfully written to temporary file");
+
+    let cursor = Cursor::new(std::fs::read(tmp.path()).map_err(|e| {
+        debug_log(format!("Failed to read temporary file: {}", e));
+        e.to_string()
+    })?);
+    debug_log("Temporary file successfully read into cursor");
+
+    let mut zip = ZipArchive::new(cursor).map_err(|e| {
+        debug_log(format!("Failed to open ZIP archive: {}", e));
+        e.to_string()
+    })?;
+    debug_log("ZIP archive successfully opened");
+
+    let target_dir = app_dir();
+    debug_log(format!("Target directory for extracted files: {}", target_dir.display()));
+
+    std::fs::create_dir_all(&target_dir).map_err(|e| {
+        debug_log(format!("Failed to create target directory: {}", e));
+        e.to_string()
+    })?;
+    debug_log("Target directory successfully created");
+
+    for i in 0..zip.len() {
+        let mut entry = zip.by_index(i).map_err(|e| e.to_string())?;
+        let outpath = match entry.enclosed_name() {
+            Some(p) => target_dir.join(p),
+            None => continue,
+        };
+
+        if entry.name().ends_with('/') {
+            std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
+            continue;
+        }
+
+        if outpath.exists() && !overwrite {
+            return Err(format!("File exists and overwrite not allowed: {}", outpath.display()));
+        }
+
+        if let Some(parent) = outpath.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut outfile).map_err(|e| e.to_string())?;
+    }
+
+    debug_log(format!("Redeem completed and files written to {}", target_dir.display()));
+    Ok(())
+}
+
 fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
     let settings = load_settings();
-    let requirements_ok = required_files_present(&settings);
-    let toggle = if running { "Stop" } else { "Start" };
+    let nebula_bin = nebula_bin_path();
+    let nebula_ver = nebula_version();
+    let config_ok = config_and_certs_present(&settings);
+
     let mut menu = SystemTrayMenu::new();
-    if running || requirements_ok {
-        menu = menu.add_item(CustomMenuItem::new("toggle", toggle));
+
+    if nebula_bin.is_none() {
+        // Nebula binary missing: only show Download, Settings, Quit
+        menu = menu
+            .add_item(CustomMenuItem::new("download_nebula", "Download Nebula"))
+            .add_item(CustomMenuItem::new("settings", "Settings…"))
+            .add_item(CustomMenuItem::new("quit", "Quit"));
+        return menu;
     }
+
+    // Nebula binary present: show version
+    let version_label = match nebula_ver {
+        Some(ver) => format!("Nebula: {ver}"),
+        None => "Nebula: (version unknown)".to_string(),
+    };
+    menu = menu.add_item(CustomMenuItem::new("nebula_version", version_label).disabled());
+
+    if !config_ok {
+        // Config/certs missing: show disabled Connect button
+        menu = menu
+            .add_item(CustomMenuItem::new("toggle", "Connect").disabled())
+            .add_item(CustomMenuItem::new("settings", "Settings…"))
+            .add_item(CustomMenuItem::new("quit", "Quit"));
+        return menu;
+    }
+
+    // Everything present: normal menu
+    let toggle = if running { "Stop" } else { "Start" };
+    menu = menu.add_item(CustomMenuItem::new("toggle", toggle));
     menu
         .add_item(CustomMenuItem::new(
             "status",
@@ -261,7 +432,7 @@ fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
         .add_item(CustomMenuItem::new("settings", "Settings…"))
         .add_item(CustomMenuItem::new("open_log", "Open Debug Log"))
         .add_item(CustomMenuItem::new("install_nebula", "Install Nebula"))
-        .add_item(CustomMenuItem::new("quit", "Quit")) // <-- Add quit item
+        .add_item(CustomMenuItem::new("quit", "Quit"))
 }
 
 fn debug_log<M: AsRef<str>>(msg: M) {
@@ -331,12 +502,34 @@ async fn get_status() -> Result<Status, String> {
 
 #[tauri::command]
 async fn open_settings_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String> {
+    // Try to find an existing window first
     if let Some(w) = app.get_window("settings") {
+        // Attempt to show & focus. If successful, done.
         let _ = w.show();
         let _ = w.set_focus();
         return Ok(());
     }
-    Err("settings window missing".into())
+
+    // Otherwise build a new settings window and intercept native close to hide instead of destroy
+    let url = tauri::WindowUrl::App("settings.html".into());
+    let build = tauri::WindowBuilder::new(&app, "settings", url)
+        .title("Settings")
+        .min_inner_size(320.0, 220.0)
+        .build();
+
+    match build {
+        Ok(win) => {
+            let win_clone = win.clone();
+            win.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = win_clone.hide();
+                }
+            });
+            Ok(())
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]
@@ -398,6 +591,12 @@ fn main() {
         .on_system_tray_event(|app, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "toggle" => {
+                    // Only allow toggle if nebula binary and config/certs are present
+                    let settings = load_settings();
+                    if nebula_bin_path().is_none() || !config_and_certs_present(&settings) {
+                        // Do nothing if not available
+                        return;
+                    }
                     let app = app.clone();
                     let was_running = STATE.lock().child.is_some();
                     if was_running {
@@ -413,8 +612,24 @@ fn main() {
                         debug_log(format!("Toggle action completed. Running now: {}", now_running));
                     });
                 }
+                "download_nebula" => {
+                    // Open the install script or download page
+                    debug_log("Tray clicked: Download Nebula");
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = install_nebula().await {
+                            debug_log(format!("Download nebula failed: {}", e));
+                        } else {
+                            debug_log("Download nebula completed successfully");
+                        }
+                    });
+                }
                 "settings" => {
-                    if let Some(w) = app.get_window("settings") { let _ = w.show(); let _ = w.set_focus(); }
+                    // Use the open_settings_window helper so we always create or show and
+                    // attach the CloseRequested handler. Run async to avoid doing this on the tray thread.
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let _ = open_settings_window(app).await;
+                    });
                 }
                 "open_log" => {
                     let path = app_dir().join("debug.log");
@@ -509,6 +724,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             start_nebula, stop_nebula, get_status, open_settings_window,
             save_config, get_settings, hide_settings, install_nebula
+            , redeem_invite, check_existing_certs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
