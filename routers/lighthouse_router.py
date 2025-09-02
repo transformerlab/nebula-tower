@@ -85,7 +85,14 @@ def config_init_lighthouse():
                 "proto": "any"
             }
         ],
-        "outbound_action": "drop"
+        "outbound_action": "drop",
+        "inbound": [
+            {
+                "port": "any",
+                "proto": "icmp",
+                "host": "any"
+            }
+        ]
     }
     config['pki'] = {
         'ca': './data/lighthouse/ca.crt',
