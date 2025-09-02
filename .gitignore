@@ -20,7 +20,7 @@ nebula.db
 # Node.js dependencies
 node_modules/
 dist/
-build/
+build/*
 
 # Rust build artifacts
 src-tauri/target/
@@ -29,6 +29,7 @@ client/nebula-tower-menubar-app/src-tauri/target/
 # Tauri mobile platform build artifacts (if applicable)
 gen/*/build/
 gen/*/DerivedData/
+client/nebula-tower-menubar-app/frontend/*
 
 # Environment files
 .env
@@ -41,3 +42,5 @@ gen/*/DerivedData/
 # Other common ignored files
 *.log
 *.tmp
+
+bin/*
