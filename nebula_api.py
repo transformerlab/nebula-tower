@@ -54,7 +54,7 @@ class NebulaAPI:
 
         Args:
             name: Certificate name (usually hostname)
-            networks: Networks in CIDR notation (e.g., "fdc8:d0db:a315:cb00::1/64")
+            networks: Networks in CIDR notation (e.g., "fdc8:d0db:a315:cb00::1/48")
             groups: Comma-separated list of groups
             out_crt: Path to write the certificate
             out_key: Path to write the private key

@@ -301,8 +301,8 @@
             // Try to pre-fill data if we can
             try {
               const s = await callInvoke("get_settings");
-              if (s && s.ping_host)
-                document.getElementById("lighthouse").value = s.ping_host;
+              const ph = s ? s.ping_host ?? s.pingHost : null;
+              if (ph) document.getElementById("lighthouse").value = ph;
             } catch (e) {
               console.warn("Failed to load settings:", e);
             }
@@ -338,9 +338,7 @@
               const cfg = s && s.config_path ? s.config_path : null;
               let exists = false;
               if (cfg) {
-                exists = await callInvoke("check_existing_certs", {
-                  configPath: cfg,
-                });
+                exists = await callInvoke("check_existing_certs");
               }
               let overwrite = false;
               if (exists) {
@@ -355,14 +353,13 @@
               info.textContent =
                 "Contacting lighthouse and downloading files...";
               await callInvoke("redeem_invite", {
-                lighthouseIp: ip, // Changed from lighthouse_ip to lighthouseIp
-                inviteCode: code, // Changed from invite_code to inviteCode
+                lighthouseIp: ip,
+                inviteCode: code,
                 overwrite,
               });
               if (s) {
                 await callInvoke("save_config", {
-                  config_path: s.config_path,
-                  ping_host: ip,
+                  pingHost: ip,
                 });
               }
               info.textContent =

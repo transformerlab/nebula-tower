@@ -32,14 +32,12 @@ struct Status {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Settings {
-    config_path: PathBuf,
     ping_host: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            config_path: default_config_path(),
             ping_host: "127.0.0.1".to_string(),
         }
     }
@@ -101,7 +99,7 @@ async fn spawn_nebula(settings: &Settings) -> Result<tokio::process::Child> {
     #[cfg(target_os = "macos")]
     {
         let nebula_path = nebula.display().to_string();
-        let config_path = settings.config_path.display().to_string();
+        let config_path = default_config_path().display().to_string();
         let shell_cmd = format!("\"{}\" -config \"{}\"", nebula_path, config_path);
         let script = format!(
             "do shell script \"{}\" with administrator privileges",
@@ -146,7 +144,7 @@ async fn spawn_nebula(settings: &Settings) -> Result<tokio::process::Child> {
     #[cfg(not(target_os = "macos"))]
     {
         let mut cmd = Command::new(nebula);
-        cmd.arg("-config").arg(&settings.config_path);
+        cmd.arg("-config").arg(default_config_path());
         cmd.kill_on_drop(true);
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
@@ -244,12 +242,13 @@ fn required_files_present(settings: &Settings) -> bool {
     }
 
     // Check config.yaml
-    if !settings.config_path.exists() {
+    let config_path = default_config_path();
+    if !config_path.exists() {
         return false;
     }
 
     // Check host.key, host.crt, ca.crt in same dir as config
-    let config_dir = settings.config_path.parent().unwrap_or(&settings.config_path);
+    let config_dir = config_path.parent().unwrap_or(&config_path);
     let host_key = config_dir.join("host.key");
     let host_crt = config_dir.join("host.crt");
     let ca_crt = config_dir.join("ca.crt");
@@ -268,11 +267,12 @@ fn required_files_present(settings: &Settings) -> bool {
 // New helper: check only config/certs, not nebula binary
 fn config_and_certs_present(settings: &Settings) -> bool {
     // Check config.yaml
-    if !settings.config_path.exists() {
+    let config_path = default_config_path();
+    if !config_path.exists() {
         return false;
     }
     // Check host.key, host.crt, ca.crt in same dir as config
-    let config_dir = settings.config_path.parent().unwrap_or(&settings.config_path);
+    let config_dir = config_path.parent().unwrap_or(&config_path);
     let host_key = config_dir.join("host.key");
     let host_crt = config_dir.join("host.crt");
     let ca_crt = config_dir.join("ca.crt");
@@ -287,8 +287,8 @@ fn config_and_certs_present(settings: &Settings) -> bool {
 }
 
 #[tauri::command]
-async fn check_existing_certs(config_path: String) -> Result<bool, String> {
-    let cfg = PathBuf::from(config_path);
+async fn check_existing_certs() -> Result<bool, String> {
+    let cfg = default_config_path();
     if !cfg.exists() { return Ok(false); }
     let dir = cfg.parent().unwrap_or(&cfg);
     let host_key = dir.join("host.key");
@@ -297,23 +297,30 @@ async fn check_existing_certs(config_path: String) -> Result<bool, String> {
     Ok(host_key.exists() || host_crt.exists() || ca_crt.exists())
 }
 
-// Redeem an invite by contacting the lighthouse at {ip}/api/client/redeem_invite?invite_code=...
+// Redeem an invite by contacting the lighthouse at {ip}/client/api/redeem_invite?invite_code=...
 // Response is expected to be a zip file containing certs and config; unzip into app_dir()
 #[tauri::command]
 async fn redeem_invite(lighthouse_ip: String, invite_code: String, overwrite: bool) -> Result<(), String> {
     let client = Client::builder().timeout(std::time::Duration::from_secs(30)).build().map_err(|e| e.to_string())?;
-    let url = format!("http://{}/api/client/redeem_invite?invite_code={}", lighthouse_ip, invite_code);
+    let url = format!("http://{}/client/api/redeem_invite?invite_code={}", lighthouse_ip, invite_code);
     debug_log(format!("Redeeming invite at {}", url));
 
     let resp = client.get(&url).send().await.map_err(|e| {
         debug_log(format!("Failed to send redeem request: {}", e));
         e.to_string()
     })?;
-    debug_log(format!("Received response with status: {}", resp.status()));
+    let status = resp.status();
+    debug_log(format!("Received response with status: {}", status));
 
-    if !resp.status().is_success() {
-        debug_log(format!("Redeem request failed with status: {}", resp.status()));
-        return Err(format!("Redeem request failed: {}", resp.status()));
+    if !status.is_success() {
+        debug_log(format!("Redeem request failed with status: {}", status));
+        // Try to log the body if possible
+        let body_text = resp.text().await;
+        match body_text {
+            Ok(text) => debug_log(format!("Response body: {}", text)),
+            Err(_) => debug_log("Failed to read response body".to_string()),
+        }
+        return Err(format!("Redeem request failed: {}", status));
     }
 
     // Read response bytes
@@ -369,8 +376,10 @@ async fn redeem_invite(lighthouse_ip: String, invite_code: String, overwrite: bo
             continue;
         }
 
-        if outpath.exists() && !overwrite {
-            return Err(format!("File exists and overwrite not allowed: {}", outpath.display()));
+        // Always overwrite existing files during invite redemption
+        if outpath.exists() {
+            debug_log(format!("Overwriting existing file: {}", outpath.display()));
+            // proceed; File::create below will truncate
         }
 
         if let Some(parent) = outpath.parent() {
@@ -470,7 +479,7 @@ async fn start_nebula<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String
                 let mut st = STATE.lock();
                 st.child = Some(child);
             }
-            debug_log(format!("Start initiated: spawning nebula with config {:?} (pid={})", settings.config_path, pid));
+            debug_log(format!("Start initiated: spawning nebula with config {:?} (pid={})", default_config_path(), pid));
             apply_tray(&app);
             Ok(())
         }
@@ -533,9 +542,8 @@ async fn open_settings_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<()
 }
 
 #[tauri::command]
-async fn save_config(config_path: String, ping_host: String) -> Result<(), String> {
+async fn save_config(ping_host: String) -> Result<(), String> {
     let mut s = load_settings();
-    s.config_path = PathBuf::from(config_path);
     s.ping_host = ping_host;
     save_settings(&s).map_err(|e| e.to_string())
 }

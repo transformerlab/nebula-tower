@@ -260,12 +260,23 @@ async def delete_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_as
 # Mount static files for frontend
 
 frontend_dist = pathlib.Path(__file__).parent / "frontend" / "dist"
-
+image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".tiff"}
 if frontend_dist.exists():
+    # Mount static files at /assets (Vite default)
+    app.mount("/assets", StaticFiles(directory=frontend_dist / "assets"), name="assets")
+
+    # SPA fallback and image serving for all other paths
     @app.get("/{full_path:path}")
     async def spa_fallback(full_path: str):
+        # Restrict fallback for paths starting with /admin/api or /client/api
+        if full_path.startswith("admin/api") or full_path.startswith("client/api"):
+            return {"detail": "Not Found"}, 404
+
+        file_path = frontend_dist / full_path
+        ext = file_path.suffix.lower()
+        if file_path.exists() and file_path.is_file() and ext in image_extensions:
+            return FileResponse(file_path)
         index_file = frontend_dist / "index.html"
         if index_file.exists():
             return FileResponse(index_file)
         return {"detail": "Not Found"}, 404
-

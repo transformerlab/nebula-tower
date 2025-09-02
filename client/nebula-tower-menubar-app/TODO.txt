@@ -1,3 +1,4 @@
 
 
 - Hide tray icon, only show a menubar icon
+- Use users to log into the tower from the tray

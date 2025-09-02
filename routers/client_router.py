@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import os
 from datetime import datetime
+from typing import Optional
 from routers.hosts_router import HostRequest, sanitize_string, create_host as hosts_create_host, load_yaml, save_yaml, download_org_host_config
 from vars import DATA_DIR
 from dependencies import limiter
@@ -14,13 +15,17 @@ class ClientHostRequest(BaseModel):
     name: str
     tags: list[str]
 
+@router.get("/api/")
+async def get_client_info(request: Request):
+    # Implement your logic to retrieve client information
+    return {"message": "Hello, this is the client API"}
 
-@router.post("/api/client/redeem_invite")
+@router.get("/api/redeem_invite")
 @limiter.limit("5/minute")
-async def create_host_using_invite(req: ClientHostRequest, request: Request):
-    invite_code = sanitize_string(req.invite_code)
-    name = sanitize_string(req.name)
-    tags = [sanitize_string(t) for t in req.tags]
+async def create_host_using_invite(request: Request):
+    invite_code = request.query_params.get("invite_code")
+    name = request.query_params.get("name", "host")  # Set default name to "host"
+    tags = request.query_params.getlist("tags")
 
     invites_file = os.path.join(DATA_DIR, "invites.yaml")
     if not os.path.exists(invites_file):
@@ -40,7 +45,8 @@ async def create_host_using_invite(req: ClientHostRequest, request: Request):
     org = invite.get("org")
     if not org:
         raise HTTPException(status_code=400, detail="Invite code missing org")
-
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
     host_req = HostRequest(name=name, org=org, tags=tags)
     result = await hosts_create_host(host_req)
 
@@ -53,5 +59,3 @@ async def create_host_using_invite(req: ClientHostRequest, request: Request):
     returned_name = result["name"]
 
     return await download_org_host_config(org_name=org, host_name=returned_name)
-
-

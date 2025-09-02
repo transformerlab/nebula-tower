@@ -106,7 +106,7 @@ def create_lighthouse_certs():
     ca_crt = os.path.join(DATA_DIR, "certs", "ca.crt")
     ca_key = os.path.join(DATA_DIR, "certs", "ca.key")
     print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
-    networks = f"{LIGHTHOUSE_IP}/64"
+    networks = f"{LIGHTHOUSE_IP}/48"
     nebula = NebulaAPI()
     print("Signing certificate with NebulaAPI...")
     result = nebula.sign_cert(

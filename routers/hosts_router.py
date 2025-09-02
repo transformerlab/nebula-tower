@@ -112,8 +112,8 @@ def create_certs(org, name):
     ca_key = os.path.join(DATA_DIR, "certs", "ca.key")
     print(f"CA certificate path: {ca_crt}, CA key path: {ca_key}")
 
-    # Use the required format for networks: "<ip>/64"
-    networks = f"{ip}/64"
+    # Use the required format for networks: "<ip>/48"
+    networks = f"{ip}/48"
 
     nebula = NebulaAPI()
     print("Signing certificate with NebulaAPI...")
