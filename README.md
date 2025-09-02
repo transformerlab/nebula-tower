@@ -1,4 +1,6 @@
-# Build and run:
+# Server
+
+## Build and run:
 - Download the app using the zip file in github
 - Download the nebula binaries and store them in /bin
 - Unzip nebula-tower-main.zip
@@ -13,10 +15,23 @@
 - edit .env and set the variables
 - `uv run main.py` (you will have to do sudo in front if on macOS)
 
-# Development
-
 ## To run this in development:
 
 * backend: `uv run main.py` (you should do this using sudo on a mac)
 * frontend: `cd frontend; npm run dev` after doing an `npm install`
+
+# Clients
+
+## Tauri app
+
+### Dev:
+
+go to `cd client/nebula-tower-menubar-app`
+`npm install`
+`npx tauri dev`
+
+### Build for production:
+
+`npm tauri build`
+The build goes in `src-tauri/src/target/release`
 
