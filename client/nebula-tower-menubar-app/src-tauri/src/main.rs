@@ -40,7 +40,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             config_path: default_config_path(),
-            ping_host: "8.8.8.8".to_string(),
+            ping_host: "127.0.0.1".to_string(),
         }
     }
 }
@@ -679,8 +679,14 @@ fn main() {
             let handle = app.handle();
             tauri::async_runtime::spawn(async move {
                 loop {
-                    let host = load_settings().ping_host;
-                    let ms = ping_once(&host).await.unwrap_or(0);
+                    // Only ping if nebula is running
+                    let is_running = { STATE.lock().child.is_some() };
+                    let ms = if is_running {
+                        let host = load_settings().ping_host;
+                        ping_once(&host).await.unwrap_or(0)
+                    } else {
+                        0
+                    };
                     {
                         let mut st = STATE.lock();
                         st.last_latency_ms = ms;
