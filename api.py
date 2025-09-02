@@ -4,8 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-
 from dependencies import limiter
+import pathlib
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 
 # Import the hosts router
@@ -252,4 +254,18 @@ async def delete_user(user_id: uuid.UUID, session: AsyncSession = Depends(get_as
     await session.commit()
     return {"status": "deleted"}
 # --- end Admin Users Management ---
+
+
+
+# Mount static files for frontend
+
+frontend_dist = pathlib.Path(__file__).parent / "frontend" / "dist"
+
+if frontend_dist.exists():
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        index_file = frontend_dist / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        return {"detail": "Not Found"}, 404
 
