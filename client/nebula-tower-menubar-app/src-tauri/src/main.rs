@@ -11,6 +11,8 @@ use tokio::{
     process::Command,
     time,
 };
+// add an alias for tokio Command for use in async platform probes
+use tokio::process::Command as TokioCommand;
 use reqwest::Client;
 use std::io::Cursor;
 use zip::ZipArchive;
@@ -100,9 +102,12 @@ async fn spawn_nebula(settings: &Settings) -> Result<tokio::process::Child> {
     {
         let nebula_path = nebula.display().to_string();
         let config_path = default_config_path().display().to_string();
-        let shell_cmd = format!("\"{}\" -config \"{}\"", nebula_path, config_path);
+        // Use `exec` so the shell is replaced by the nebula process (so osascript's child
+        // is the nebula binary itself and killing the child actually kills nebula).
+        let shell_cmd = format!("exec \"{}\" -config \"{}\"", nebula_path, config_path);
+        // Show a friendly prompt in the macOS auth dialog
         let script = format!(
-            "do shell script \"{}\" with administrator privileges",
+            "do shell script \"{}\" with administrator privileges with prompt \"Nebula Tower needs sudo privileges on a Mac in order to make network changes\"",
             shell_cmd.replace("\"", "\\\"")
         );
         let mut cmd = Command::new("/usr/bin/osascript");
@@ -495,10 +500,120 @@ async fn stop_nebula<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), String>
     debug_log("Stop requested");
     let mut maybe_child = { STATE.lock().child.take() };
     if let Some(mut child) = maybe_child.take() {
-        let _ = child.kill();
-        let _ = child.wait().await;
-        debug_log("Nebula stopped");
+        // log kill attempt result (kill() is async; await it)
+        match child.kill().await {
+            Ok(_) => debug_log("child.kill() succeeded"),
+            Err(e) => debug_log(format!("child.kill() failed: {}", e)),
+        }
+        // log wait result/status
+        match child.wait().await {
+            Ok(status) => {
+                debug_log(format!("child.wait() completed, status: {:?}", status));
+            }
+            Err(e) => {
+                debug_log(format!("child.wait() failed: {}", e));
+            }
+        }
+        debug_log("Nebula stopped (local child handled)");
+    } else {
+        debug_log("No local child to stop");
     }
+
+    // Probe for lingering nebula processes and try to remove them when possible.
+    // This provides additional debug info when processes still exist after the local child is killed.
+    #[cfg(target_os = "macos")]
+    {
+        // find nebula pids (exact match)
+        debug_log("macOS: checking for lingering nebula processes via pgrep");
+        match TokioCommand::new("pgrep").arg("-x").arg("nebula").output().await {
+            Ok(out) => {
+                debug_log(format!("pgrep exit: {}, stdout len: {}", out.status, out.stdout.len()));
+                if out.status.success() {
+                    let s = String::from_utf8_lossy(&out.stdout);
+                    debug_log(format!("pgrep output: {}", s.trim()));
+                    for line in s.lines() {
+                        if let Ok(pid) = line.trim().parse::<u32>() {
+                            debug_log(format!("Requesting sudo to kill nebula pid {}", pid));
+                            // Build an osascript that runs kill with privileges
+                            let kill_cmd = format!("do shell script \"kill -TERM {}\" with administrator privileges", pid);
+                            match TokioCommand::new("/usr/bin/osascript").arg("-e").arg(kill_cmd).spawn() {
+                                Ok(_) => debug_log(format!("osascript spawn requested for pid {}", pid)),
+                                Err(e) => debug_log(format!("osascript spawn failed for pid {}: {}", pid, e)),
+                            }
+                        }
+                    }
+                } else {
+                    debug_log("pgrep did not find any running nebula processes (or returned non-zero)");
+                }
+            }
+            Err(e) => {
+                debug_log(format!("Failed to run pgrep: {}", e));
+            }
+        }
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        debug_log("Unix (non-macOS): checking for lingering nebula processes via pgrep");
+        match TokioCommand::new("pgrep").arg("-x").arg("nebula").output().await {
+            Ok(out) => {
+                debug_log(format!("pgrep exit: {}, stdout len: {}", out.status, out.stdout.len()));
+                if out.status.success() {
+                    let s = String::from_utf8_lossy(&out.stdout);
+                    debug_log(format!("pgrep output: {}", s.trim()));
+                    for line in s.lines() {
+                        let pid_str = line.trim();
+                        debug_log(format!("Attempting to kill nebula pid {} (SIGTERM)", pid_str));
+                        match TokioCommand::new("kill").arg("-TERM").arg(pid_str).output().await {
+                            Ok(kout) => {
+                                debug_log(format!("kill -TERM exit: {}, stderr len: {}", kout.status, kout.stderr.len()));
+                                if !kout.status.success() {
+                                    debug_log(format!("kill -TERM failed for pid {}. Consider running as root or using sudo.", pid_str));
+                                }
+                            }
+                            Err(e) => {
+                                debug_log(format!("Failed to run kill for pid {}: {}", pid_str, e));
+                            }
+                        }
+                    }
+                } else {
+                    debug_log("pgrep did not find any running nebula processes (or returned non-zero)");
+                }
+            }
+            Err(e) => {
+                debug_log(format!("Failed to run pgrep: {}", e));
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        debug_log("Windows: checking for nebula.exe via tasklist");
+        match TokioCommand::new("tasklist").arg("/FI").arg("IMAGENAME eq nebula.exe").output().await {
+            Ok(out) => {
+                debug_log(format!("tasklist exit: {}, stdout len: {}", out.status, out.stdout.len()));
+                let s = String::from_utf8_lossy(&out.stdout);
+                debug_log(format!("tasklist output: {}", s.trim()));
+                // attempt to kill via taskkill
+                debug_log("Attempting to taskkill nebula.exe");
+                match TokioCommand::new("taskkill").arg("/IM").arg("nebula.exe").arg("/T").arg("/F").output().await {
+                    Ok(kout) => {
+                        debug_log(format!("taskkill exit: {}, stdout len: {}, stderr len: {}", kout.status, kout.stdout.len(), kout.stderr.len()));
+                        if !kout.status.success() {
+                            debug_log("taskkill reported failure; manual investigation required");
+                        }
+                    }
+                    Err(e) => {
+                        debug_log(format!("Failed to run taskkill: {}", e));
+                    }
+                }
+            }
+            Err(e) => {
+                debug_log(format!("Failed to run tasklist: {}", e));
+            }
+        }
+    }
+
     apply_tray(&app);
     Ok(())
 }
