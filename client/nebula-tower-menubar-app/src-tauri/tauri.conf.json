@@ -36,7 +36,7 @@
       "identifier": "com.transformerlab.nebula.tower.menubar",
       "icon": [],
       "macOS": {
-        "signingIdentity": null
+        "signingIdentity": "-"
       }
     },
     "windows": [
