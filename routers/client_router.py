@@ -1,12 +1,14 @@
+import json
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 import os
 from datetime import datetime
-from typing import Optional
-from routers.hosts_router import HostRequest, sanitize_string, create_host as hosts_create_host, load_yaml, save_yaml, download_org_host_config
+from routers.ca_router import get_ca_cert_info
+from routers.hosts_router import HostRequest, create_host as hosts_create_host, load_yaml, save_yaml, download_org_host_config
 from vars import DATA_DIR
 from dependencies import limiter
-
+from vars import LIGHTHOUSE_IP
+from nebula_api import NebulaAPI  # Add this import
 
 router = APIRouter()
 
@@ -15,10 +17,34 @@ class ClientHostRequest(BaseModel):
     name: str
     tags: list[str]
 
+nebula = NebulaAPI()  # Instantiate NebulaAPI
+
 @router.get("/api/")
 async def get_client_info(request: Request):
     # Implement your logic to retrieve client information
     return {"message": "Hello, this is the client API"}
+
+#@TODO: cache the response
+@router.get("/api/info")
+async def get_client_info_details(request: Request):
+    # Publish my external IP is LIGHTHOUSE_PUBLIC_IP
+    public_ip = os.environ.get("LIGHTHOUSE_PUBLIC_IP", "unknown")
+    nebula_ip = LIGHTHOUSE_IP
+    server_is_running = nebula._nebula_proc is not None and nebula._nebula_proc.poll() is None
+    cert_info = get_ca_cert_info()
+    cert_info = cert_info.get("info", "{}")
+    cert_info = json.loads(cert_info)
+    print(cert_info)
+    cert_info = cert_info[0].get("details", {})
+    company_name = cert_info.get("name", "unknown")
+
+    return {
+        "message": "This is a Nebula Tower Instance",
+        "company_name": company_name,
+        "public_ip": public_ip,
+        "nebula_ip": nebula_ip,
+        "lighthouse_is_running": server_is_running,
+    }
 
 @router.get("/api/redeem_invite")
 @limiter.limit("5/minute")
