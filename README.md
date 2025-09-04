@@ -4,7 +4,7 @@
 
 ## What It Is
 
-Nebula Tower is a user-friendly server and client application that simplifies managing a Slack Nebula mesh network.
+Nebula Tower is a user-friendly server and client application that simplifies managing a <a href="https://github.com/slackhq/nebula">Slack Nebula</a> mesh network.
 
 If you run the server component on a machine with a public IP address (like a $6/month Digital Ocean droplet), you can use the web interface to:
 
@@ -12,7 +12,7 @@ If you run the server component on a machine with a public IP address (like a $6
 - 🌐 Set up a Lighthouse server and its configuration
 - 🖥️ Create hosts and generate their respective certificates and configs
 
-Afterward, clients (hosts) can easily download their configuration files and connect to the Nebula network using either a simple script or a Tauri application.
+Afterward, clients (hosts) can easily download Nebula Tower generated configuration files and connect to the Nebula network using either a simple script or a Menubar application.
 
 ## Important Considerations
 
@@ -22,8 +22,10 @@ To keep things simple, Nebula Tower handles some things differently than the sta
 
 We also use the nightly version of Nebula with v2 certificates. This is because we need IPv6 support to create enough internal hosts without running into address conflicts. You can find more details on this approach in the <a href="https://nebula.defined.net/docs/guides/upgrade-to-cert-v2-and-ipv6/">official Nebula documentation on upgrading to v2 certificates and IPv6</a>.
 
+Server Screenshot:
 ![Server Screenshot](frontend/public/server-screenshot.png)
 
+Menubar App Screenshot
 ![Client Screenshot](frontend/public/client-screenshot.png)
 
  
@@ -79,7 +81,16 @@ go to `cd client/nebula-tower-menubar-app`
 `npx tauri build`
 The build goes in `src-tauri/src/target/release`
 
+# Repo Organization:
+
+| Path                              | Description                                   |
+|-----------------------------------|-----------------------------------------------|
+| `main.py`                         | Root file, server starting point              |
+| `frontend/`                       | React app for the server                      |
+| `data/`                           | Directory where the server stores data    |
+| `bin/`                            | Directory where Nebula binaries live          |
+| `client/nebula-tower-menubar-app` | Directory for the client Menubar application  |
 
 # License
 
-
+GNU AFFERO GENERAL PUBLIC LICENSE v3
