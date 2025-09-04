@@ -5,6 +5,8 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{fs::OpenOptions, io::{Write, stdout, stderr}, path::PathBuf, process::Stdio, time::Duration, env};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use tauri::{CustomMenuItem, Manager, Runtime, SystemTray, SystemTrayEvent, SystemTrayMenu};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -676,18 +678,57 @@ async fn hide_settings<R: Runtime>(app: tauri::AppHandle<R>) -> Result<(), Strin
 
 #[tauri::command]
 async fn install_nebula() -> Result<(), String> {
-    // Run the installer script from the project root during dev builds
-    let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .to_path_buf();
-    let script = project_root.join("scripts").join("install_nebula.sh");
-    if !script.exists() {
-        return Err(format!("installer script not found at {}", script.display()));
+    // First try the installer script in the project (useful during development)
+    // let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    //     .parent()
+    //     .unwrap()
+    //     .to_path_buf();
+    // let dev_script = project_root.join("scripts").join("install_nebula.sh");
+    // if dev_script.exists() {
+    //     debug_log(format!("Running installer script (dev): {}", dev_script.display()));
+    //     let out = Command::new("/bin/bash")
+    //         .arg(dev_script)
+    //         .stdout(Stdio::piped())
+    //         .stderr(Stdio::piped())
+    //         .output()
+    //         .await
+    //         .map_err(|e| e.to_string())?;
+    //     debug_log(format!("Installer stdout: {}", String::from_utf8_lossy(&out.stdout)));
+    //     if !out.status.success() {
+    //         debug_log(format!("Installer stderr: {}", String::from_utf8_lossy(&out.stderr)));
+    //         return Err(format!("installer exited with status {}", out.status));
+    //     }
+    //     return Ok(());
+    // }
+
+    // If not found in dev tree, fall back to an embedded copy packaged with the app.
+    // The script is embedded at compile time and written to the app config dir so it
+    // can be executed from an installed app location.
+    let embedded: &[u8] = include_bytes!("../../scripts/install_nebula.sh");
+    let scripts_dir = app_dir().join("scripts");
+    std::fs::create_dir_all(&scripts_dir).map_err(|e| format!("failed to create scripts dir: {}", e))?;
+    let script_path = scripts_dir.join("install_nebula.sh");
+    std::fs::write(&script_path, embedded).map_err(|e| format!("failed to write embedded installer: {}", e))?;
+    // Ensure executable on Unix
+    #[cfg(unix)]
+    {
+        let mut perms = std::fs::metadata(&script_path)
+            .map_err(|e| format!("failed to stat script for chmod: {}", e))?
+            .permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script_path, perms)
+            .map_err(|e| format!("failed to set script executable: {}", e))?;
     }
-    debug_log(format!("Running installer script: {}", script.display()));
-    let out = Command::new("/bin/bash")
-        .arg(script)
+
+    // Choose a bash executable to run the script. On Windows we don't support the installer.
+    if cfg!(target_os = "windows") {
+        return Err("install script is not supported on Windows".to_string());
+    }
+    use std::path::Path;
+    let shell = if Path::new("/bin/bash").exists() { "/bin/bash" } else { "bash" };
+    debug_log(format!("Running embedded installer script at {} using {}", script_path.display(), shell));
+    let out = Command::new(shell)
+        .arg(&script_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()

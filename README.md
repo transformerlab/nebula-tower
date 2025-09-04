@@ -10,9 +10,10 @@
 - edit .env and add your server's address e.g. http://162.243.38.134:8000 (make sure you are editing your frontend/.env as there is a different /.env in the root of the project)
 - `npm run build`
 - `cd ..`
-- install uv
+- install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - `cp .env.sample .env`
 - edit .env and set the variables
+- run `uv run create_admin.py` and follow the instructions to create your first admin user (make sure to enable the promote flag)
 - `uv run main.py` (you will have to do sudo in front if on macOS)
 
 ## To run this in development:
