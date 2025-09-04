@@ -15,9 +15,16 @@ If you run the server component on a machine with a public IP address (like a $6
 Afterward, clients (hosts) can easily download their configuration files and connect to the Nebula network using either a simple script or a Tauri application.
 
 ## Important Considerations
+
+This is a very early version of Nebula tower. If you find the concept helpful, let's collaborate to improve the app.
+
 To keep things simple, Nebula Tower handles some things differently than the standard Nebula setup. We store the CA, lighthouse, and host certificates all on the tower itself. While this makes administration easier, it also means the security of your network is less decentralized than a typical Nebula deployment.
 
 We also use the nightly version of Nebula with v2 certificates. This is because we need IPv6 support to create enough internal hosts without running into address conflicts. You can find more details on this approach in the <a href="https://nebula.defined.net/docs/guides/upgrade-to-cert-v2-and-ipv6/">official Nebula documentation on upgrading to v2 certificates and IPv6</a>.
+
+![Server Screenshot](frontend/public/server-screenshot.png)
+
+![Client Screenshot](frontend/public/client-screenshot.png)
 
  
 # Get Started
@@ -71,4 +78,8 @@ go to `cd client/nebula-tower-menubar-app`
 
 `npx tauri build`
 The build goes in `src-tauri/src/target/release`
+
+
+# License
+
 
