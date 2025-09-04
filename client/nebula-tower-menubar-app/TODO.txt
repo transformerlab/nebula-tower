@@ -1,5 +1,0 @@
-
-- BUG: if you install certs, it doesn't refresh
-- BUG: Auto download bins doesn't work
-- Hide tray icon, only show a menubar icon
-- Use users to log into the tower from the tray

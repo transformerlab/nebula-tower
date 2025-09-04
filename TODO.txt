@@ -2,7 +2,9 @@
 
 TODO:
 ---
-- Real Authorization
+
+Server:
+- UI doesn't log you out properly if auth fails
 - Move binaries to their own directory
 - Write a script to get the right binaries for a specific system
 - Build frontend in a way that the backend can load it as static
@@ -11,6 +13,12 @@ TODO:
 - Make hosts create their own private keys and have server sign them
 - Landing page when setting up certs
 - Ability to ask the lighthouse if your cert needs a reload
+
+Menubar App:
+- BUG: if you install certs, it doesn't refresh the menu
+- BUG: Auto download bins doesn't work
+- Hide tray icon, only show a menubar icon
+- Should we use user ID to log into the tower from the tray, instead of invites?
 
 Nice to have:
 ---
