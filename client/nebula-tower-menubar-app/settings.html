@@ -5,18 +5,129 @@
     <title>Nebula Settings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+      /* Page card */
       body {
         font-family: -apple-system, system-ui, sans-serif;
-        padding: 16px;
+        background: #f3f6f9;
+        margin: 0;
+        padding: 24px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+
+        /* Make the page content look like a centered card */
+        max-width: 720px;
+        margin-left: auto;
+        margin-right: auto;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 8px 30px rgba(20, 30, 40, 0.06);
+        padding: 28px;
+        color: #1f2937;
       }
+
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 1.25rem;
+        color: #0f172a;
+      }
+
+      p {
+        margin: 0 0 16px 0;
+        color: #334155;
+        line-height: 1.4;
+        font-size: 0.95rem;
+      }
+
       label {
         display: block;
-        margin-top: 12px;
+        margin-top: 14px;
+        margin-bottom: 6px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #334155;
       }
+
+      input[type="text"],
       input {
-        margin-top: 4px;
+        display: block;
         width: 100%;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+        box-sizing: border-box;
+        transition: box-shadow 160ms ease, border-color 160ms ease;
       }
+
+      input:focus {
+        outline: none;
+        border-color: #60a5fa;
+        box-shadow: 0 6px 22px rgba(96, 165, 250, 0.12);
+      }
+
+      /* Button group */
+      div[style*="margin-top: 12px"] {
+        margin-top: 18px;
+      }
+
+      button {
+        padding: 8px 14px;
+        font-size: 0.95rem;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform 80ms ease, box-shadow 80ms ease,
+          opacity 120ms ease;
+        min-width: 88px;
+      }
+
+      #submit {
+        background: #2563eb;
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.05);
+      }
+      #submit:active {
+        transform: translateY(1px);
+      }
+      #submit:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      #close {
+        background: #ffffff;
+        color: #374151;
+        border: 1px solid #e6eef8;
+        margin-left: 8px;
+      }
+
+      /* Inline messages */
+      #error {
+        color: #b91c1c;
+        margin-top: 10px;
+        font-weight: 600;
+      }
+
+      #info {
+        color: #065f46;
+        margin-top: 10px;
+      }
+
+      #invoke-status {
+        margin-top: 12px;
+        color: #92400e;
+        font-size: 0.95rem;
+      }
+      #invoke-status.error {
+        color: #721c24;
+      }
+      #invoke-status.success {
+        color: #065f46;
+      }
+
+      /* Confirm modal */
       #confirm-modal {
         display: none;
         position: fixed;
@@ -24,35 +135,58 @@
         top: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.35);
+        background: rgba(2, 6, 23, 0.45);
         align-items: center;
         justify-content: center;
         z-index: 9999;
+        padding: 24px;
       }
       #confirm-modal .box {
         background: #fff;
-        padding: 16px;
-        border-radius: 8px;
-        max-width: 420px;
-        width: 90%;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+        padding: 18px;
+        border-radius: 10px;
+        max-width: 480px;
+        width: 100%;
+        box-shadow: 0 10px 40px rgba(2, 6, 23, 0.22);
+      }
+      #confirm-message {
+        color: #0f172a;
+        font-size: 0.98rem;
       }
       #confirm-modal .buttons {
-        margin-top: 12px;
+        margin-top: 14px;
         text-align: right;
       }
       #confirm-modal button {
         margin-left: 8px;
+        padding: 8px 12px;
+        border-radius: 8px;
       }
-      #invoke-status {
-        margin-top: 8px;
-        color: #856404;
+      #confirm-cancel {
+        background: #f8fafc;
+        border: 1px solid #e6eef8;
       }
-      #invoke-status.error {
-        color: #721c24;
+      #confirm-ok {
+        background: #ef4444;
+        color: white;
+        border: 1px solid rgba(0, 0, 0, 0.05);
       }
-      #invoke-status.success {
-        color: #155724;
+
+      /* Small screens */
+      @media (max-width: 520px) {
+        body {
+          padding: 18px;
+          border-radius: 8px;
+        }
+        #submit,
+        #close {
+          width: 48%;
+          min-width: 0;
+        }
+        div[style*="margin-top: 12px"] {
+          display: flex;
+          gap: 8px;
+        }
       }
     </style>
   </head>
@@ -197,7 +331,7 @@
             // Try to find the invoke function
             const inv = getInvoke();
             if (inv) {
-              statusEl.textContent = "Connected to native API.";
+              statusEl.textContent = "";
               statusEl.className = "success";
               submitBtn.disabled = false;
               clearInterval(checkInterval);
@@ -294,7 +428,7 @@
 
           try {
             const inv = await waitForInvoke();
-            statusEl.textContent = "Connected to native API.";
+            statusEl.textContent = "";
             statusEl.className = "success";
             submitBtn.disabled = false;
 

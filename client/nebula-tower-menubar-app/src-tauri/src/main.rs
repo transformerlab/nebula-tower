@@ -19,7 +19,20 @@ use reqwest::Client;
 use std::io::Cursor;
 use zip::ZipArchive;
 use tempfile::NamedTempFile;
+use serde_json::Value;
 
+// Add struct for lighthouse info
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+struct LighthouseInfo {
+    valid: bool,
+    company_name: Option<String>,
+    public_ip: Option<String>,
+    nebula_ip: Option<String>,
+    lighthouse_is_running: Option<bool>,
+}
+
+// Add global state for lighthouse info
+static LIGHTHOUSE_INFO: Lazy<Mutex<LighthouseInfo>> = Lazy::new(|| Mutex::new(LighthouseInfo::default()));
 static STATE: Lazy<Mutex<AppState>> = Lazy::new(|| Mutex::new(AppState::default()));
 
 #[derive(Debug, Default)]
@@ -406,7 +419,25 @@ fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
     let nebula_ver = nebula_version();
     let config_ok = config_and_certs_present(&settings);
 
+    let lighthouse_info = LIGHTHOUSE_INFO.lock().clone();
+
     let mut menu = SystemTrayMenu::new();
+
+    // Show company name or invalid IP row
+    if settings.lighthouse_public_ip.trim().is_empty() {
+        menu = menu.add_item(CustomMenuItem::new("lighthouse_status", "No lighthouse IP set").disabled());
+    } else if !lighthouse_info.valid {
+        menu = menu.add_item(CustomMenuItem::new("lighthouse_status", "Invalid lighthouse IP").disabled());
+    } else if let Some(name) = &lighthouse_info.company_name {
+        menu = menu.add_item(CustomMenuItem::new("company_name", format!("Company: {}", name)).disabled());
+        if let Some(nebula_ip) = &lighthouse_info.nebula_ip {
+            menu = menu.add_item(CustomMenuItem::new("nebula_ip", format!("Nebula IP: {}", nebula_ip)).disabled());
+        }
+        if let Some(is_running) = lighthouse_info.lighthouse_is_running {
+            let status = if is_running { "Lighthouse: Running" } else { "Lighthouse: Stopped" };
+            menu = menu.add_item(CustomMenuItem::new("lh_running", status).disabled());
+        }
+    }
 
     if nebula_bin.is_none() {
         // Nebula binary missing: only show Download, Settings, Quit
@@ -856,6 +887,69 @@ fn main() {
                         st.last_latency_ms = ms;
                     }
                     apply_tray(&handle);
+                    time::sleep(Duration::from_secs(5)).await;
+                }
+            });
+
+            // periodic lighthouse info updater
+            let handle_lh = app.handle();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    let ip = load_settings().lighthouse_public_ip;
+                    let mut info = LighthouseInfo::default();
+                    if !ip.trim().is_empty() {
+                        let url = format!("http://{}/client/api/info", ip.trim());
+                        match reqwest::Client::new().get(&url).timeout(Duration::from_secs(5)).send().await {
+                            Ok(resp) => {
+                                // Save status before consuming resp (text() takes ownership)
+                                let status = resp.status();
+                                // Read the body as text and always log a short preview of the response.
+                                match resp.text().await {
+                                    Ok(text) => {
+                                        // Log status + short body preview
+                                        let preview: String = text.chars().take(200).collect();
+                                        // debug_log(format!("Lighthouse HTTP {}: {}", status, preview));
+
+                                        // Try to parse JSON and populate available fields even if "message" isn't the expected one.
+                                        match serde_json::from_str::<Value>(&text) {
+                                            Ok(json) => {
+                                                // Populate optional fields if present
+                                                info.company_name = json.get("company_name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                                info.public_ip = json.get("public_ip").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                                info.nebula_ip = json.get("nebula_ip").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                                info.lighthouse_is_running = json.get("lighthouse_is_running").and_then(|v| v.as_bool());
+
+                                                // Mark valid only when the specific identifying message is present
+                                                if json.get("message").and_then(|m| m.as_str()) == Some("This is a Nebula Tower Instance") {
+                                                    info.valid = true;
+                                                }
+
+                                                // Always log what we found
+                                                // debug_log(format!(
+                                                //     "Parsed lighthouse info: company={:?}, public_ip={:?}, nebula_ip={:?}, lighthouse_running={:?}, valid={}",
+                                                //     info.company_name, info.public_ip, info.nebula_ip, info.lighthouse_is_running, info.valid
+                                                // ));
+                                            }
+                                            Err(e) => {
+                                                debug_log(format!("Failed to parse lighthouse JSON: {}. Body preview: {}", e, preview));
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        debug_log(format!("Failed to read lighthouse response body: {}", e));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                debug_log(format!("Failed to fetch lighthouse info: {}", e));
+                            }
+                        }
+                    }
+                    {
+                        let mut state = LIGHTHOUSE_INFO.lock();
+                        *state = info;
+                    }
+                    apply_tray(&handle_lh);
                     time::sleep(Duration::from_secs(5)).await;
                 }
             });
