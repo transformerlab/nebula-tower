@@ -36,13 +36,13 @@ struct Status {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Settings {
-    ping_host: String,
+    lighthouse_public_ip: String,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            ping_host: "127.0.0.1".to_string(),
+            lighthouse_public_ip: "127.0.0.1".to_string(),
         }
     }
 }
@@ -264,7 +264,7 @@ fn required_files_present(settings: &Settings) -> bool {
     }
 
     // Check lighthouse IP
-    if settings.ping_host.trim().is_empty() {
+    if settings.lighthouse_public_ip.trim().is_empty() {
         return false;
     }
 
@@ -287,7 +287,7 @@ fn config_and_certs_present(settings: &Settings) -> bool {
         return false;
     }
     // Check lighthouse IP
-    if settings.ping_host.trim().is_empty() {
+    if settings.lighthouse_public_ip.trim().is_empty() {
         return false;
     }
     true
@@ -659,9 +659,9 @@ async fn open_settings_window<R: Runtime>(app: tauri::AppHandle<R>) -> Result<()
 }
 
 #[tauri::command]
-async fn save_config(ping_host: String) -> Result<(), String> {
+async fn save_config(lighthouse_public_ip: String) -> Result<(), String> {
     let mut s = load_settings();
-    s.ping_host = ping_host;
+    s.lighthouse_public_ip = lighthouse_public_ip;
     save_settings(&s).map_err(|e| e.to_string())
 }
 
@@ -846,7 +846,7 @@ fn main() {
                     // Only ping if nebula is running
                     let is_running = { STATE.lock().child.is_some() };
                     let ms = if is_running {
-                        let host = load_settings().ping_host;
+                        let host = load_settings().lighthouse_public_ip;
                         ping_once(&host).await.unwrap_or(0)
                     } else {
                         0

@@ -301,7 +301,8 @@
             // Try to pre-fill data if we can
             try {
               const s = await callInvoke("get_settings");
-              const ph = s ? s.ping_host ?? s.pingHost : null;
+              // Use the new 'lighthouse_public_ip' setting name exclusively
+              const ph = s ? s.lighthouse_public_ip : null;
               if (ph) document.getElementById("lighthouse").value = ph;
             } catch (e) {
               console.warn("Failed to load settings:", e);
@@ -358,8 +359,9 @@
                 overwrite,
               });
               if (s) {
+                // Save using the new key name
                 await callInvoke("save_config", {
-                  pingHost: ip,
+                  lighthouse_public_ip: ip,
                 });
               }
               info.textContent =
