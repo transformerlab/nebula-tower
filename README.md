@@ -44,7 +44,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ```bash
 ./install_nebula_binaries.sh` # downloads nebula nightly
 cd frontend
-npm install # build th react app
+npm install # build the react app
 ```
 - edit `frontend/.env` and set `VITE_API_BASE_URL` to your server's address e.g. http://162.243.38.134:8000 (make sure you are editing your `frontend/.env` as there is a different .env in the root of the project)
 
