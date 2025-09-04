@@ -329,18 +329,18 @@ async fn redeem_invite(lighthouse_ip: String, invite_code: String, overwrite: bo
         debug_log(format!("Failed to send redeem request: {}", e));
         e.to_string()
     })?;
-    let status = resp.status();
-    debug_log(format!("Received response with status: {}", status));
+    let _status = resp.status();
+    debug_log(format!("Received response with status: {}", _status));
 
-    if !status.is_success() {
-        debug_log(format!("Redeem request failed with status: {}", status));
+    if !_status.is_success() {
+        debug_log(format!("Redeem request failed with status: {}", _status));
         // Try to log the body if possible
         let body_text = resp.text().await;
         match body_text {
             Ok(text) => debug_log(format!("Response body: {}", text)),
             Err(_) => debug_log("Failed to read response body".to_string()),
         }
-        return Err(format!("Redeem request failed: {}", status));
+        return Err(format!("Redeem request failed: {}", _status));
     }
 
     // Read response bytes
@@ -429,45 +429,50 @@ fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
     } else if !lighthouse_info.valid {
         menu = menu.add_item(CustomMenuItem::new("lighthouse_status", "Invalid lighthouse IP").disabled());
     } else if let Some(name) = &lighthouse_info.company_name {
-        menu = menu.add_item(CustomMenuItem::new("company_name", format!("Company: {}", name)).disabled());
-        if let Some(nebula_ip) = &lighthouse_info.nebula_ip {
-            menu = menu.add_item(CustomMenuItem::new("nebula_ip", format!("Nebula IP: {}", nebula_ip)).disabled());
-        }
-        if let Some(is_running) = lighthouse_info.lighthouse_is_running {
-            let status = if is_running { "Lighthouse: Running" } else { "Lighthouse: Stopped" };
-            menu = menu.add_item(CustomMenuItem::new("lh_running", status).disabled());
-        }
+        menu = menu
+            .add_item(CustomMenuItem::new("company_name", format!("Company: {}", name)).disabled())
+            .add_item(CustomMenuItem::new("nebula_ip", format!("Lighthouse Internal IP: {}", lighthouse_info.nebula_ip.unwrap_or_default())).disabled())
+            .add_item(CustomMenuItem::new(
+                "lh_running",
+                format!(
+                    "Lighthouse: {}",
+                    if lighthouse_info.lighthouse_is_running.unwrap_or(false) {
+                        "Running"
+                    } else {
+                        "Stopped"
+                    }
+                ),
+            ).disabled());
     }
 
     if nebula_bin.is_none() {
-        // Nebula binary missing: only show Download, Settings, Quit
-        menu = menu
+        return menu
             .add_item(CustomMenuItem::new("download_nebula", "Download Nebula"))
             .add_item(CustomMenuItem::new("settings", "Settings…"))
-            .add_item(CustomMenuItem::new("quit", "Quit"));
-        return menu;
+            .add_item(CustomMenuItem::new(
+                "quit",
+                if running { "Quit (Stop nebula first)" } else { "Quit" },
+            ).disabled());
     }
 
-    // Nebula binary present: show version
     let version_label = match nebula_ver {
         Some(ver) => format!("Nebula: {ver}"),
         None => "Nebula: (version unknown)".to_string(),
     };
+
     menu = menu.add_item(CustomMenuItem::new("nebula_version", version_label).disabled());
 
     if !config_ok {
-        // Config/certs missing: show disabled Connect button
-        menu = menu
+        return menu
             .add_item(CustomMenuItem::new("toggle", "Connect").disabled())
             .add_item(CustomMenuItem::new("settings", "Settings…"))
-            .add_item(CustomMenuItem::new("quit", "Quit"));
-        return menu;
+            .add_item(CustomMenuItem::new(
+                "quit",
+                if running { "Quit (Stop nebula first)" } else { "Quit" },
+            ).disabled());
     }
 
-    // Everything present: normal menu
-    let toggle = if running { "Stop" } else { "Start" };
-    menu = menu.add_item(CustomMenuItem::new("toggle", toggle));
-    menu
+    menu.add_item(CustomMenuItem::new("toggle", if running { "Stop" } else { "Start" }))
         .add_item(CustomMenuItem::new(
             "status",
             format!(
@@ -479,7 +484,10 @@ fn tray_menu(running: bool, latency: u64) -> SystemTrayMenu {
         .add_item(CustomMenuItem::new("settings", "Settings…"))
         .add_item(CustomMenuItem::new("open_log", "Open Debug Log"))
         .add_item(CustomMenuItem::new("install_nebula", "Install Nebula"))
-        .add_item(CustomMenuItem::new("quit", "Quit"))
+        .add_item(CustomMenuItem::new(
+            "quit",
+            if running { "Quit (Stop nebula first)" } else { "Quit" },
+        ).disabled())
 }
 
 fn debug_log<M: AsRef<str>>(msg: M) {
@@ -863,6 +871,11 @@ fn main() {
                     });
                 }
                 "quit" => {
+                    // Defensive: don't allow quitting while nebula is running.
+                    if STATE.lock().child.is_some() {
+                        debug_log("Quit requested while nebula is running; action ignored (stop nebula first)");
+                        return;
+                    }
                     std::process::exit(0);
                 }
                 _ => {}
@@ -902,7 +915,7 @@ fn main() {
                         match reqwest::Client::new().get(&url).timeout(Duration::from_secs(5)).send().await {
                             Ok(resp) => {
                                 // Save status before consuming resp (text() takes ownership)
-                                let status = resp.status();
+                                let _status = resp.status();
                                 // Read the body as text and always log a short preview of the response.
                                 match resp.text().await {
                                     Ok(text) => {
