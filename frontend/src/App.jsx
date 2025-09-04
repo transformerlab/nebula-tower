@@ -35,7 +35,7 @@ function Sidebar() {
   ];
   return (
     <Sheet sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
-      <Typography level="h4"><img src="/tower-top.png" alt="Nebula Logo" style={{ width: 24, height: 24, marginRight: 8 }} />Nebula Tower</Typography>
+      <Typography level="h4"><img src="/trayIcon.png" alt="Nebula Logo" style={{ width: 24, height: 24, marginRight: 8 }} />Nebula Tower</Typography>
       <NebulaProcessStatusCard disableButtons={!lighthouseConfigExists} />
       <List>
         {navItems.map(item => (

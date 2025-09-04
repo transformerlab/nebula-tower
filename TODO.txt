@@ -4,10 +4,7 @@ TODO:
 ---
 
 Server:
-- UI doesn't log you out properly if auth fails
-- Move binaries to their own directory
-- Write a script to get the right binaries for a specific system
-- Build frontend in a way that the backend can load it as static
+- I don't think we are refreshing tokens properly
 - Give each org a different CA
 - How do we handle that central certs expire in a year. Can we refresh hosts in a nice way?
 - Make hosts create their own private keys and have server sign them
