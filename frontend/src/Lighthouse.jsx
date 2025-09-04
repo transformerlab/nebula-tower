@@ -47,6 +47,9 @@ export default function Lighthouse() {
               Some config or certs are missing in data/lighthouse.
             </Alert>
           )}
+          <Typography level="body-lg" mb={1}>External IP: {config?.external_ip ?? '[Missing external IP]'}</Typography>
+          <Typography level="body-lg" mb={1}>Port: {config?.port ?? '[Missing port]'}</Typography>
+          <Typography level="body-lg" mb={1}>Internal IP: {config?.internal_ip ?? '[Missing internal IP]'}</Typography>
           <Typography level="body-lg" mb={1}>Config file (config.yaml):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.config ?? '[Missing config.yaml]'}

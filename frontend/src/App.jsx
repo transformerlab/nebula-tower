@@ -34,7 +34,7 @@ function Sidebar() {
     ...(me?.is_superuser ? [{ label: 'Users', to: '/users', icon: <UsersIcon size={20} />, disabled: false }] : []),
   ];
   return (
-    <Sheet variant="outlined" sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
+    <Sheet sx={{ width: 250, minHeight: '100vh', p: 2, borderRight: 1, borderColor: 'divider', }}>
       <Typography level="h4"><img src="/tower-top.png" alt="Nebula Logo" style={{ width: 24, height: 24, marginRight: 8 }} />Nebula Tower</Typography>
       <NebulaProcessStatusCard disableButtons={!lighthouseConfigExists} />
       <List>
@@ -68,7 +68,7 @@ function MainLayout({ children }) {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
       <Sidebar />
-      <Sheet sx={{ flex: 1, pl: 2 }}>{children}</Sheet>
+      <Sheet sx={{ flex: 1, pl: 2, width: '100%' }}>{children}</Sheet>
     </Box>
   );
 }

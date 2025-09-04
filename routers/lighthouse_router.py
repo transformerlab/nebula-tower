@@ -3,7 +3,7 @@ import os
 import yaml
 import shutil
 from nebula_api import NebulaAPI
-from vars import DATA_DIR, LIGHTHOUSE_IP
+from vars import DATA_DIR, LIGHTHOUSE_IP, EXTERNAL_IP
 
 router = APIRouter()
 
@@ -36,6 +36,11 @@ def get_all_configs():
     else:
         configs["host_cert"] = None
         configs["host_key"] = None
+
+    configs["external_ip"] = EXTERNAL_IP
+    configs["internal_ip"] = LIGHTHOUSE_IP
+    configs["port"] = 4242
+
 
     return configs
 

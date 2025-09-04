@@ -74,7 +74,7 @@ export default function Cert() {
     : null;
 
   return (
-    <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
+    <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2, width: '100%' }}>
       <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate</Typography>
       {certExpiresIn !== null && certExpiresIn < 120 && (
         <Alert color="warning" sx={{ mb: 2 }}>
