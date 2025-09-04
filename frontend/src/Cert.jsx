@@ -69,27 +69,41 @@ export default function Cert() {
 
   const loading = caLoading || (shouldFetchInfo && infoLoading);
 
+  let certExpiresIn = certInfo && certInfo.details && certInfo.details.notAfter && !isNaN(new Date(certInfo.details.notAfter))
+    ? Math.round((new Date(certInfo.details.notAfter) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2 }}>
       <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate</Typography>
-      <Button onClick={handleRefresh} sx={{ mb: 2 }}>Reload</Button>
+      {certExpiresIn !== null && certExpiresIn < 120 && (
+        <Alert color="warning" sx={{ mb: 2 }}>
+          Warning: The certificate is expiring in {certExpiresIn} days. Please renew it soon. https://nebula.defined.net/docs/guides/rotating-certificate-authority/
+        </Alert>
+      )}
       {loading ? <CircularProgress /> : (
         <>
           {caData && caData.cert ? (
             <Box className="cert-box" sx={{ p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
               <Typography level="h3">CA Certificate</Typography>
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData.cert}</pre>
-              <Typography level="h4"><b>CA Key:</b> {caData.key_exists ? 'Exists' : 'Not found'}</Typography>
+              <Typography level="h3"><b>CA Key:</b></Typography>
+              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData?.key}{caData?.key && '.. (rest hidden)'}</pre>
               {certInfo && certInfo.details && (
                 <Box sx={{ mt: 2, overflow: 'hidden', maxWidth: '500px' }}>
-                  <Typography level="h4">Certificate Info</Typography>
+                  <Typography level="h3">Certificate Info</Typography>
                   <ul style={{ textAlign: 'left' }}>
-                    <li><b>Name:</b> {certInfo.details.name}</li>
+                    <li><b>Organization Name:</b> {certInfo.details.name}</li>
                     <li><b>Is CA:</b> {certInfo.details.isCa ? 'Yes' : 'No'}</li>
                     <li><b>Issuer:</b> {certInfo.details.issuer || '-'}</li>
                     <li><b>Curve:</b> {certInfo.curve}</li>
-                    <li><b>Valid From:</b> {certInfo.details.notBefore}</li>
-                    <li><b>Valid To:</b> {certInfo.details.notAfter}</li>
+                    <li><b>Valid From:</b> {new Date(certInfo.details.notBefore).toLocaleString()}</li>
+                    <li>
+                      <b>Valid To:</b> {new Date(certInfo.details.notAfter).toLocaleString()}
+                      <span style={{ color: certExpiresIn < 120 ? 'red' : 'inherit' }}>
+                        expires in {certExpiresIn} days
+                      </span>
+                    </li>
                     <li><b>Public Key:</b> <code>{certInfo.publicKey}</code></li>
                     <li><b>Fingerprint:</b> <code>{certInfo.fingerprint}</code></li>
                     <li><b>Signature:</b> <code>{certInfo.signature}</code></li>
@@ -100,7 +114,6 @@ export default function Cert() {
           ) : (
             <Box>
               <Typography>No CA certificate found.</Typography>
-              <Typography level="h2"><b>CA Key:</b> {caData && caData.key_exists ? 'Exists' : 'Not found'}</Typography>
               <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
                 <Input
                   placeholder="Organization Name"
