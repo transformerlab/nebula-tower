@@ -25,7 +25,7 @@ We also use the nightly version of Nebula with v2 certificates. This is because 
 Server Screenshot:
 ![Server Screenshot](frontend/public/server-screenshot.png)
 
-Menubar App Screenshot
+Menubar App Screenshot:
 ![Client Screenshot](frontend/public/client-screenshot.png)
 
  
