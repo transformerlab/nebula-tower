@@ -2,28 +2,31 @@
 
 ![Tray Icon](frontend/public/trayIcon.png)
 
-# Concept
+## What It Is
 
-Nebula tower is a server and client app for the <a href="https://github.com/slackhq/nebula">Slack Nebula</a> mesh network. If you run this server on a server with a public IP address (such as a $6 / month Digital Ocean server) you can access it and in the UI:
+Nebula Tower is a user-friendly server and client application that simplifies managing a Slack Nebula mesh network.
 
-- Create a CA Certificate
-- Set up a Lighthouse server + config
-- Create hosts and their respective certificates / config
+If you run the server component on a machine with a public IP address (like a $6/month Digital Ocean droplet), you can use the web interface to:
 
-Then clients (aka hosts) can download their config and connect to the Nebula mesh network using a script or a simple Tauri app.
+- 🔒 Create a Certificate Authority (CA) Certificate
+- 🌐 Set up a Lighthouse server and its configuration
+- 🖥️ Create hosts and generate their respective certificates and configs
 
-Note that there are a couple things we do differently, to make things simple, than the recommended way to use Nebula. Mainly, we store the CA certs, the lighthouse certs and (for now) the host certs all on the tower. This makes the entire network less distributed in security.
+Afterward, clients (hosts) can easily download their configuration files and connect to the Nebula network using either a simple script or a Tauri application.
 
-Also note that we use the nightly version of nebula with v2 certs because we require IPv6 support in nebula in order to be able to create enough internal hosts while avoiding address conflicts. (more info here https://nebula.defined.net/docs/guides/upgrade-to-cert-v2-and-ipv6/)
+## Important Considerations
+To keep things simple, Nebula Tower handles some things differently than the standard Nebula setup. We store the CA, lighthouse, and host certificates all on the tower itself. While this makes administration easier, it also means the security of your network is less decentralized than a typical Nebula deployment.
 
+We also use the nightly version of Nebula with v2 certificates. This is because we need IPv6 support to create enough internal hosts without running into address conflicts. You can find more details on this approach in the <a href="https://nebula.defined.net/docs/guides/upgrade-to-cert-v2-and-ipv6/">official Nebula documentation on upgrading to v2 certificates and IPv6</a>.
 
-# Run the Server
+ 
+# Get Started
 
-## Build and run:
+## Run the server:
 
 (currently works on MacOS and Linux)
 
-- First make sure you have - <a href="https://docs.astral.sh/uv/">uv</a>
+- Install <a href="https://docs.astral.sh/uv/">uv</a>
 
 ```
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -58,7 +61,7 @@ Do the above but then run the frontend separately
 
 ## Tauri app
 
-### Dev:
+### For Development:
 
 go to `cd client/nebula-tower-menubar-app`
 `npm install`
