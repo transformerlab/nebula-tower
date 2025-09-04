@@ -2,7 +2,7 @@
 
 ## Build and run:
 - Download the app using the zip file in github
-- Download the nebula binaries and store them in /bin
+- Download the nebula binaries and store them in /bin by running `install_nebula_binaries.sh`
 - Unzip nebula-tower-main.zip
 - `cd nebula-tower-main`
 - `cd frontend`
