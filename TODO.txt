@@ -12,6 +12,7 @@ Server:
 - Ability to ask the lighthouse if your cert needs a reload
 
 Menubar App:
+- Display your internal IP
 - BUG: if you install certs, it doesn't refresh the menu
 - BUG: Auto download bins doesn't work
 - Hide tray icon, only show a menubar icon
