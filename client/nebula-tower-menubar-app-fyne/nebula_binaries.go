@@ -397,3 +397,90 @@ func (a *App) getHostCertDetails(hostCertPath string) (string, error) {
 
 	return strings.TrimSpace(string(output)), nil
 }
+
+// runNebulaDaemon starts the nebula daemon with proper privileges
+func (a *App) runNebulaDaemon() (int, error) {
+	settingsDir := filepath.Dir(a.configPath)
+	binDir := filepath.Join(settingsDir, "bin")
+	nebulaBinary := filepath.Join(binDir, "nebula")
+
+	if runtime.GOOS == "windows" {
+		nebulaBinary += ".exe"
+	}
+
+	// Check if binary exists
+	if _, err := os.Stat(nebulaBinary); os.IsNotExist(err) {
+		return 0, fmt.Errorf("nebula binary not found at %s", nebulaBinary)
+	}
+
+	// Check if nebula config exists (config.yaml, not the app config)
+	configDir := filepath.Dir(a.configPath)
+	nebulaConfigPath := filepath.Join(configDir, "config.yaml")
+	if _, err := os.Stat(nebulaConfigPath); os.IsNotExist(err) {
+		return 0, fmt.Errorf("nebula config file not found at %s", nebulaConfigPath)
+	}
+
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "darwin" {
+		// On macOS, use osascript to run with administrator privileges
+		script := fmt.Sprintf(`do shell script "%s -config %s" with administrator privileges`,
+			nebulaBinary, nebulaConfigPath)
+		cmd = exec.Command("osascript", "-e", script)
+	} else {
+		// On other platforms, run directly
+		cmd = exec.Command(nebulaBinary, "-config", nebulaConfigPath)
+	}
+
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		return 0, fmt.Errorf("failed to start nebula daemon: %v", err)
+	}
+
+	log.Printf("Started nebula daemon with PID: %d", cmd.Process.Pid)
+	return cmd.Process.Pid, nil
+}
+
+// isProcessRunning checks if a process with given PID is still running
+func (a *App) isProcessRunning(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV")
+	} else {
+		cmd = exec.Command("ps", "-p", fmt.Sprintf("%d", pid))
+	}
+
+	err := cmd.Run()
+	return err == nil
+}
+
+// stopNebulaDaemon stops the nebula daemon by PID
+func (a *App) stopNebulaDaemon(pid int) error {
+	if pid <= 0 {
+		return fmt.Errorf("invalid PID: %d", pid)
+	}
+
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("taskkill", "/F", "/PID", fmt.Sprintf("%d", pid))
+	} else if runtime.GOOS == "darwin" {
+		// On macOS, might need sudo to kill the process
+		script := fmt.Sprintf(`do shell script "kill %d" with administrator privileges`, pid)
+		cmd = exec.Command("osascript", "-e", script)
+	} else {
+		cmd = exec.Command("kill", fmt.Sprintf("%d", pid))
+	}
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to stop nebula daemon: %v", err)
+	}
+
+	log.Printf("Stopped nebula daemon with PID: %d", pid)
+	return nil
+}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -50,20 +51,71 @@ func (a *App) saveConfig() error {
 	return ioutil.WriteFile(a.configPath, data, 0644)
 }
 
-// startNebulaService simulates starting the Nebula service
+// startNebulaService starts the Nebula daemon and tracks its PID
 func (a *App) startNebulaService() {
 	if !a.nebulaConfigExists {
 		log.Println("Cannot start Nebula: configuration files not found")
 		return
 	}
 	
+	if a.isNebulaRunning {
+		log.Println("Nebula daemon is already running")
+		return
+	}
+	
 	log.Println("Starting Nebula service...")
-	// TODO: Implement actual Nebula service start logic
-	// This could include:
-	// 1. Actual nebula process management
-	// 2. Service status checking
-	// 3. Network interface management
-	// 4. Certificate validation
+	pid, err := a.runNebulaDaemon()
+	if err != nil {
+		log.Printf("Failed to start Nebula daemon: %v", err)
+		return
+	}
+	
+	a.nebulaDaemonPID = pid
+	a.isNebulaRunning = true
+	log.Printf("Nebula daemon started with PID: %d", pid)
+	
+	// Refresh the system tray menu to show stop button
+	a.refreshSystemTrayMenu()
+}
+
+// stopNebulaService stops the Nebula daemon
+func (a *App) stopNebulaService() {
+	if !a.isNebulaRunning || a.nebulaDaemonPID <= 0 {
+		log.Println("Nebula daemon is not running")
+		return
+	}
+	
+	log.Printf("Stopping Nebula service with PID: %d", a.nebulaDaemonPID)
+	err := a.stopNebulaDaemon(a.nebulaDaemonPID)
+	if err != nil {
+		log.Printf("Failed to stop Nebula daemon: %v", err)
+		// Still mark as not running and reset PID since the process might be gone
+	}
+	
+	a.nebulaDaemonPID = 0
+	a.isNebulaRunning = false
+	log.Println("Nebula daemon stopped")
+	
+	// Refresh the system tray menu to show start button
+	a.refreshSystemTrayMenu()
+}
+
+// checkNebulaProcessStatus periodically checks if the nebula daemon is still running
+func (a *App) checkNebulaProcessStatus() {
+	if a.nebulaDaemonPID > 0 {
+		isRunning := a.isProcessRunning(a.nebulaDaemonPID)
+		if !isRunning && a.isNebulaRunning {
+			// Process died unexpectedly
+			log.Printf("Nebula daemon (PID: %d) has stopped unexpectedly", a.nebulaDaemonPID)
+			a.nebulaDaemonPID = 0
+			a.isNebulaRunning = false
+			a.refreshSystemTrayMenu()
+		} else if isRunning && !a.isNebulaRunning {
+			// Process is running but we thought it was stopped
+			a.isNebulaRunning = true
+			a.refreshSystemTrayMenu()
+		}
+	}
 }
 
 // getConnectionStatus returns the connection status text for the system tray
@@ -93,12 +145,19 @@ func (a *App) setupSystemTray() {
 		// Load icon resource
 		iconResource := getIcon()
 		
-		// Create start menu item (initially disabled)
-		startMenuItem := fyne.NewMenuItem("Start Nebula", func() {
-			a.startNebulaService()
-		})
-		startMenuItem.Disabled = true // Initially disabled until config is found
-		a.startMenuItem = startMenuItem // Store reference for later updates
+		// Create start/stop menu item based on current state
+		var startStopMenuItem *fyne.MenuItem
+		if a.isNebulaRunning {
+			startStopMenuItem = fyne.NewMenuItem("Stop Nebula", func() {
+				a.stopNebulaService()
+			})
+		} else {
+			startStopMenuItem = fyne.NewMenuItem("Start Nebula", func() {
+				a.startNebulaService()
+			})
+		}
+		startStopMenuItem.Disabled = !a.nebulaConfigExists // Disabled if no config exists
+		a.startMenuItem = startStopMenuItem // Store reference for later updates
 		
 		// Create connection status menu item
 		statusText := a.getConnectionStatus()
@@ -115,7 +174,7 @@ func (a *App) setupSystemTray() {
 			statusMenuItem,
 			ipMenuItem,
 			fyne.NewMenuItemSeparator(),
-			startMenuItem,
+			startStopMenuItem,
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings", func() {
 				a.showSettingsWindow()
@@ -125,6 +184,11 @@ func (a *App) setupSystemTray() {
 			}),
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Quit", func() {
+				// Stop nebula daemon if it's running
+				if a.isNebulaRunning && a.nebulaDaemonPID > 0 {
+					log.Printf("Stopping nebula daemon (PID: %d) before exit", a.nebulaDaemonPID)
+					a.stopNebulaDaemon(a.nebulaDaemonPID)
+				}
 				a.fyneApp.Quit()
 			}),
 		)
@@ -141,12 +205,19 @@ func (a *App) setupSystemTray() {
 // refreshSystemTrayMenu refreshes the system tray menu to update menu item states
 func (a *App) refreshSystemTrayMenu() {
 	if desk, ok := a.fyneApp.(desktop.App); ok {
-		// Create start menu item with current state
-		startMenuItem := fyne.NewMenuItem("Start Nebula", func() {
-			a.startNebulaService()
-		})
-		startMenuItem.Disabled = !a.nebulaConfigExists
-		a.startMenuItem = startMenuItem // Update reference
+		// Create start/stop menu item based on current state
+		var startStopMenuItem *fyne.MenuItem
+		if a.isNebulaRunning {
+			startStopMenuItem = fyne.NewMenuItem("Stop Nebula", func() {
+				a.stopNebulaService()
+			})
+		} else {
+			startStopMenuItem = fyne.NewMenuItem("Start Nebula", func() {
+				a.startNebulaService()
+			})
+		}
+		startStopMenuItem.Disabled = !a.nebulaConfigExists // Disabled if no config exists
+		a.startMenuItem = startStopMenuItem // Update reference
 		
 		// Create connection status menu item
 		statusText := a.getConnectionStatus()
@@ -163,7 +234,7 @@ func (a *App) refreshSystemTrayMenu() {
 			statusMenuItem,
 			ipMenuItem,
 			fyne.NewMenuItemSeparator(),
-			startMenuItem,
+			startStopMenuItem,
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings", func() {
 				a.showSettingsWindow()
@@ -173,6 +244,11 @@ func (a *App) refreshSystemTrayMenu() {
 			}),
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Quit", func() {
+				// Stop nebula daemon if it's running
+				if a.isNebulaRunning && a.nebulaDaemonPID > 0 {
+					log.Printf("Stopping nebula daemon (PID: %d) before exit", a.nebulaDaemonPID)
+					a.stopNebulaDaemon(a.nebulaDaemonPID)
+				}
 				a.fyneApp.Quit()
 			}),
 		)
@@ -250,6 +326,8 @@ func main() {
 		fyneApp:           fyneApp,
 		settingsOpen:      false,
 		lighthouseDetails: &LighthouseDetails{Connected: false}, // Initialize lighthouse details
+		nebulaDaemonPID:   0,    // Initialize PID as 0 (not running)
+		isNebulaRunning:   false, // Initialize as not running
 	}
 
 	// Load configuration
@@ -281,6 +359,14 @@ func main() {
 	// Start the lighthouse pinger
 	StartLighthousePinger(nebulaApp)
 
+	// Start periodic nebula process status checking
+	go func() {
+		for {
+			time.Sleep(5 * time.Second) // Check every 5 seconds
+			nebulaApp.checkNebulaProcessStatus()
+		}
+	}()
+
 	log.Println("Starting Nebula Tower menubar application...")
 
 	// Handle system signals gracefully
@@ -289,7 +375,12 @@ func main() {
 	
 	go func() {
 		<-sigChan
-		log.Println("System signal received, quitting...")
+		log.Println("System signal received, shutting down...")
+		// Stop nebula daemon if it's running
+		if nebulaApp.isNebulaRunning && nebulaApp.nebulaDaemonPID > 0 {
+			log.Printf("Stopping nebula daemon (PID: %d) before exit", nebulaApp.nebulaDaemonPID)
+			nebulaApp.stopNebulaDaemon(nebulaApp.nebulaDaemonPID)
+		}
 		fyneApp.Quit()
 	}()
 

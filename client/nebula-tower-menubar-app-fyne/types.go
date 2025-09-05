@@ -55,6 +55,8 @@ type App struct {
 	startMenuItem                  *fyne.MenuItem        // Reference to start menu item for enabling/disabling
 	lighthouseDetails              *LighthouseDetails    // Stores lighthouse information
 	myIP                           string                // Stores the host's nebula IP address
+	nebulaDaemonPID                int                   // PID of the running nebula daemon (0 if not running)
+	isNebulaRunning                bool                  // Tracks if nebula daemon is currently running
 }
 
 // GetLighthouseIP returns the lighthouse IP from the app's configuration
