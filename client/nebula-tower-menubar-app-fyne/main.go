@@ -123,7 +123,7 @@ func (a *App) getConnectionStatus() string {
 	details := a.GetLighthouseDetails()
 	if details != nil && details.Connected {
 		if details.CompanyName != "" {
-			return "Connected to " + details.CompanyName
+			return "Tower: " + details.CompanyName
 		}
 		return "Connected to Lighthouse"
 	}
