@@ -11,6 +11,16 @@ type Config struct {
 	InviteCode string `json:"invite_code"`
 }
 
+// LighthouseDetails represents the lighthouse information
+type LighthouseDetails struct {
+	Message             string `json:"message"`
+	CompanyName         string `json:"company_name"`
+	PublicIP            string `json:"public_ip"`
+	NebulaIP            string `json:"nebula_ip"`
+	LighthouseIsRunning bool   `json:"lighthouse_is_running"`
+	Connected           bool   // Internal flag to track connection status
+}
+
 // App represents the main application
 type App struct {
 	fyneApp                        fyne.App
@@ -20,10 +30,11 @@ type App struct {
 	settingsOpen                   bool
 	towerConnectionLabel           *widget.Label
 	saveInviteCodeBtn              *widget.Button
-	inviteCodeField                *widget.Entry  // Global invite code field (used in main)
-	currentSettingsInviteCodeField *widget.Entry  // Current settings window invite code field
-	nebulaConfigExists             bool           // Tracks if nebula config files exist
-	startMenuItem                  *fyne.MenuItem // Reference to start menu item for enabling/disabling
+	inviteCodeField                *widget.Entry         // Global invite code field (used in main)
+	currentSettingsInviteCodeField *widget.Entry         // Current settings window invite code field
+	nebulaConfigExists             bool                  // Tracks if nebula config files exist
+	startMenuItem                  *fyne.MenuItem        // Reference to start menu item for enabling/disabling
+	lighthouseDetails              *LighthouseDetails    // Stores lighthouse information
 }
 
 // GetLighthouseIP returns the lighthouse IP from the app's configuration
@@ -48,4 +59,19 @@ func (a *App) GetConfig() Config {
 		return Config{}
 	}
 	return *a.config
+}
+
+// GetLighthouseDetails returns the current lighthouse details
+func (a *App) GetLighthouseDetails() *LighthouseDetails {
+	return a.lighthouseDetails
+}
+
+// SetLighthouseDetails updates the lighthouse details in the app
+func (a *App) SetLighthouseDetails(details *LighthouseDetails) {
+	a.lighthouseDetails = details
+}
+
+// IsConnectedToLighthouse returns whether the app is connected to the lighthouse
+func (a *App) IsConnectedToLighthouse() bool {
+	return a.lighthouseDetails != nil && a.lighthouseDetails.Connected
 }

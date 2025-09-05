@@ -66,6 +66,18 @@ func (a *App) startNebulaService() {
 	// 4. Certificate validation
 }
 
+// getConnectionStatus returns the connection status text for the system tray
+func (a *App) getConnectionStatus() string {
+	details := a.GetLighthouseDetails()
+	if details != nil && details.Connected {
+		if details.CompanyName != "" {
+			return "Connected to " + details.CompanyName
+		}
+		return "Connected to Lighthouse"
+	}
+	return "Not Connected"
+}
+
 // setupSystemTray creates and configures the system tray
 func (a *App) setupSystemTray() {
 	if desk, ok := a.fyneApp.(desktop.App); ok {
@@ -79,8 +91,15 @@ func (a *App) setupSystemTray() {
 		startMenuItem.Disabled = true // Initially disabled until config is found
 		a.startMenuItem = startMenuItem // Store reference for later updates
 		
+		// Create connection status menu item
+		statusText := a.getConnectionStatus()
+		statusMenuItem := fyne.NewMenuItem(statusText, nil)
+		statusMenuItem.Disabled = true // Make it non-clickable
+		
 		// Create system tray menu
 		menu := fyne.NewMenu("Nebula Tower",
+			statusMenuItem,
+			fyne.NewMenuItemSeparator(),
 			startMenuItem,
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings", func() {
@@ -114,8 +133,15 @@ func (a *App) refreshSystemTrayMenu() {
 		startMenuItem.Disabled = !a.nebulaConfigExists
 		a.startMenuItem = startMenuItem // Update reference
 		
+		// Create connection status menu item
+		statusText := a.getConnectionStatus()
+		statusMenuItem := fyne.NewMenuItem(statusText, nil)
+		statusMenuItem.Disabled = true // Make it non-clickable
+		
 		// Recreate system tray menu
 		menu := fyne.NewMenu("Nebula Tower",
+			statusMenuItem,
+			fyne.NewMenuItemSeparator(),
 			startMenuItem,
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings", func() {
@@ -198,10 +224,11 @@ func main() {
 
 	// Initialize app structure
 	nebulaApp := &App{
-		config:       &Config{},
-		configPath:   getConfigPath(),
-		fyneApp:      fyneApp,
-		settingsOpen: false,
+		config:            &Config{},
+		configPath:        getConfigPath(),
+		fyneApp:           fyneApp,
+		settingsOpen:      false,
+		lighthouseDetails: &LighthouseDetails{Connected: false}, // Initialize lighthouse details
 	}
 
 	// Load configuration

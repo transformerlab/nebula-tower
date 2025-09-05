@@ -305,9 +305,16 @@ func (a *App) showSettingsWindow() {
 func (a *App) updateConnectionStatus() {
 	// Ensure UI updates happen on the main thread
 	fyne.Do(func() {
+		isConnected := a.IsConnectedToLighthouse()
+		details := a.GetLighthouseDetails()
+		
 		if a.towerConnectionLabel != nil {
-			if connected_to_lighthouse {
-				a.towerConnectionLabel.SetText("✅ Connected to tower")
+			if isConnected && details != nil {
+				connectionText := "✅ Connected to tower"
+				if details.CompanyName != "" {
+					connectionText = "✅ Connected to " + details.CompanyName
+				}
+				a.towerConnectionLabel.SetText(connectionText)
 				a.towerConnectionLabel.Importance = widget.SuccessImportance
 			} else {
 				a.towerConnectionLabel.SetText("❌ Not connected to tower")
@@ -316,7 +323,7 @@ func (a *App) updateConnectionStatus() {
 		}
 
 		if a.saveInviteCodeBtn != nil {
-			if connected_to_lighthouse {
+			if isConnected {
 				a.saveInviteCodeBtn.Enable()
 			} else {
 				a.saveInviteCodeBtn.Disable()
@@ -325,7 +332,7 @@ func (a *App) updateConnectionStatus() {
 
 		// Update the global invite code field (used in main)
 		if a.inviteCodeField != nil {
-			if connected_to_lighthouse {
+			if isConnected {
 				a.inviteCodeField.Enable()
 			} else {
 				a.inviteCodeField.Disable()
@@ -334,12 +341,15 @@ func (a *App) updateConnectionStatus() {
 
 		// Update the current settings window invite code field
 		if a.currentSettingsInviteCodeField != nil {
-			if connected_to_lighthouse {
+			if isConnected {
 				a.currentSettingsInviteCodeField.Enable()
 			} else {
 				a.currentSettingsInviteCodeField.Disable()
 			}
 		}
+
+		// Refresh the system tray menu to update the connection status
+		a.refreshSystemTrayMenu()
 	})
 }
 

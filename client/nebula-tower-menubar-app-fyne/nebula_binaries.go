@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -345,4 +346,54 @@ func (a *App) installNebulaBinaries(statusLabel *widget.Label) {
 			statusLabel.Importance = widget.SuccessImportance
 		})
 	}()
+}
+
+// getNebulaVersion runs nebula -version and returns the output
+func (a *App) getNebulaVersion() (string, error) {
+	settingsDir := filepath.Dir(a.configPath)
+	binDir := filepath.Join(settingsDir, "bin")
+	nebulaBinary := filepath.Join(binDir, "nebula")
+
+	if runtime.GOOS == "windows" {
+		nebulaBinary += ".exe"
+	}
+
+	// Check if binary exists
+	if _, err := os.Stat(nebulaBinary); os.IsNotExist(err) {
+		return "", fmt.Errorf("nebula binary not found at %s", nebulaBinary)
+	}
+
+	// Execute nebula -version
+	cmd := exec.Command(nebulaBinary, "-version")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute nebula -version: %v", err)
+	}
+
+	return strings.TrimSpace(string(output)), nil
+}
+
+// getHostCertDetails runs nebula-cert print -path host.crt -json and returns the output
+func (a *App) getHostCertDetails(hostCertPath string) (string, error) {
+	settingsDir := filepath.Dir(a.configPath)
+	binDir := filepath.Join(settingsDir, "bin")
+	nebulaCertBinary := filepath.Join(binDir, "nebula-cert")
+
+	if runtime.GOOS == "windows" {
+		nebulaCertBinary += ".exe"
+	}
+
+	// Check if binary exists
+	if _, err := os.Stat(nebulaCertBinary); os.IsNotExist(err) {
+		return "", fmt.Errorf("nebula-cert binary not found at %s", nebulaCertBinary)
+	}
+
+	// Execute nebula-cert print -path host.crt -json
+	cmd := exec.Command(nebulaCertBinary, "print", "-path", hostCertPath, "-json")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute nebula-cert print: %v", err)
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }

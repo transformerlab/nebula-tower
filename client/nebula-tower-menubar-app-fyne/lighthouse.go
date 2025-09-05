@@ -32,6 +32,8 @@ func StartLighthousePinger(app *App) {
 			lighthouseIP := app.GetLighthouseIP()
 			if lighthouseIP == "" {
 				log.Println("Lighthouse IP not found in settings.")
+				// Set disconnected state
+				app.SetLighthouseDetails(&LighthouseDetails{Connected: false})
 				connected_to_lighthouse = false
 				time.Sleep(5 * time.Second)
 				continue
@@ -40,22 +42,36 @@ func StartLighthousePinger(app *App) {
 			resp, err := http.Get("http://" + lighthouseIP + "/client/api/info")
 			if err != nil {
 				log.Printf("Error connecting to lighthouse: %v\n", err)
+				// Set disconnected state
+				app.SetLighthouseDetails(&LighthouseDetails{Connected: false})
 				connected_to_lighthouse = false
 			} else if resp.StatusCode == http.StatusOK {
-				// Decode directly into LighthouseData
-				if json.NewDecoder(resp.Body).Decode(&LighthouseData) == nil {
-					log.Printf("LighthouseData updated: %+v\n", LighthouseData) // Debug log
+				// Create a new lighthouse details struct
+				details := &LighthouseDetails{}
+				if json.NewDecoder(resp.Body).Decode(details) == nil {
+					details.Connected = true
+					app.SetLighthouseDetails(details)
+					log.Printf("LighthouseDetails updated: %+v\n", details) // Debug log
 					if !connected_to_lighthouse {
 						log.Println("Successfully connected to lighthouse.")
 					}
 					connected_to_lighthouse = true
+					
+					// Also update the global LighthouseData for backward compatibility
+					LighthouseData.Message = details.Message
+					LighthouseData.CompanyName = details.CompanyName
+					LighthouseData.PublicIP = details.PublicIP
+					LighthouseData.NebulaIP = details.NebulaIP
+					LighthouseData.LighthouseIsRunning = details.LighthouseIsRunning
 				} else {
 					log.Println("Failed to decode lighthouse status response.")
+					app.SetLighthouseDetails(&LighthouseDetails{Connected: false})
 					connected_to_lighthouse = false
 				}
 				resp.Body.Close()
 			} else {
 				log.Printf("Unexpected response from lighthouse: %d\n", resp.StatusCode)
+				app.SetLighthouseDetails(&LighthouseDetails{Connected: false})
 				connected_to_lighthouse = false
 			}
 
