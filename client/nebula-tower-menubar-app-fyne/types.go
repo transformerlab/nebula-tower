@@ -13,13 +13,14 @@ type Config struct {
 
 // App represents the main application
 type App struct {
-	config               *Config
-	configPath           string
-	fyneApp              fyne.App
-	settingsOpen         bool
-	inviteCodeField      *widget.Entry
-	saveInviteCodeBtn    *widget.Button
+	fyneApp             fyne.App
+	config              *Config
+	configPath          string
+	settingsWindow      fyne.Window // Stores the settings window reference
+	settingsOpen        bool
 	towerConnectionLabel *widget.Label
+	saveInviteCodeBtn    *widget.Button
+	inviteCodeField      *widget.Entry
 }
 
 // GetLighthouseIP returns the lighthouse IP from the app's configuration
