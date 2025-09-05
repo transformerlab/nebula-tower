@@ -78,6 +78,15 @@ func (a *App) getConnectionStatus() string {
 	return "Not Connected"
 }
 
+// getIPStatus returns the IP address status text for the system tray
+func (a *App) getIPStatus() string {
+	myIP := a.GetMyIP()
+	if myIP != "" {
+		return "My IP: " + myIP
+	}
+	return "My IP: Not Available"
+}
+
 // setupSystemTray creates and configures the system tray
 func (a *App) setupSystemTray() {
 	if desk, ok := a.fyneApp.(desktop.App); ok {
@@ -96,9 +105,15 @@ func (a *App) setupSystemTray() {
 		statusMenuItem := fyne.NewMenuItem(statusText, nil)
 		statusMenuItem.Disabled = true // Make it non-clickable
 		
+		// Create IP address menu item
+		ipText := a.getIPStatus()
+		ipMenuItem := fyne.NewMenuItem(ipText, nil)
+		ipMenuItem.Disabled = true // Make it non-clickable
+		
 		// Create system tray menu
 		menu := fyne.NewMenu("Nebula Tower",
 			statusMenuItem,
+			ipMenuItem,
 			fyne.NewMenuItemSeparator(),
 			startMenuItem,
 			fyne.NewMenuItemSeparator(),
@@ -138,9 +153,15 @@ func (a *App) refreshSystemTrayMenu() {
 		statusMenuItem := fyne.NewMenuItem(statusText, nil)
 		statusMenuItem.Disabled = true // Make it non-clickable
 		
+		// Create IP address menu item
+		ipText := a.getIPStatus()
+		ipMenuItem := fyne.NewMenuItem(ipText, nil)
+		ipMenuItem.Disabled = true // Make it non-clickable
+		
 		// Recreate system tray menu
 		menu := fyne.NewMenu("Nebula Tower",
 			statusMenuItem,
+			ipMenuItem,
 			fyne.NewMenuItemSeparator(),
 			startMenuItem,
 			fyne.NewMenuItemSeparator(),

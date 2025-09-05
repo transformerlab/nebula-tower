@@ -21,6 +21,25 @@ type LighthouseDetails struct {
 	Connected           bool   // Internal flag to track connection status
 }
 
+// HostCertDetails represents the structure of nebula-cert print output
+type HostCertDetails struct {
+	Curve       string `json:"curve"`
+	Details     struct {
+		Groups         []string    `json:"groups"`
+		IsCa           bool        `json:"isCa"`
+		Issuer         string      `json:"issuer"`
+		Name           string      `json:"name"`
+		Networks       []string    `json:"networks"`
+		NotAfter       string      `json:"notAfter"`
+		NotBefore      string      `json:"notBefore"`
+		UnsafeNetworks interface{} `json:"unsafeNetworks"`
+	} `json:"details"`
+	Fingerprint string `json:"fingerprint"`
+	PublicKey   string `json:"publicKey"`
+	Signature   string `json:"signature"`
+	Version     int    `json:"version"`
+}
+
 // App represents the main application
 type App struct {
 	fyneApp                        fyne.App
@@ -35,6 +54,7 @@ type App struct {
 	nebulaConfigExists             bool                  // Tracks if nebula config files exist
 	startMenuItem                  *fyne.MenuItem        // Reference to start menu item for enabling/disabling
 	lighthouseDetails              *LighthouseDetails    // Stores lighthouse information
+	myIP                           string                // Stores the host's nebula IP address
 }
 
 // GetLighthouseIP returns the lighthouse IP from the app's configuration
@@ -74,4 +94,14 @@ func (a *App) SetLighthouseDetails(details *LighthouseDetails) {
 // IsConnectedToLighthouse returns whether the app is connected to the lighthouse
 func (a *App) IsConnectedToLighthouse() bool {
 	return a.lighthouseDetails != nil && a.lighthouseDetails.Connected
+}
+
+// GetMyIP returns the host's nebula IP address
+func (a *App) GetMyIP() string {
+	return a.myIP
+}
+
+// SetMyIP sets the host's nebula IP address
+func (a *App) SetMyIP(ip string) {
+	a.myIP = ip
 }

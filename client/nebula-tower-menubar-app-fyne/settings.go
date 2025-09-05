@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -36,6 +38,14 @@ func (a *App) updateNebulaConfigState() {
 	configDir := filepath.Dir(a.configPath)
 	log.Printf("Checking nebula config in directory: %s", configDir)
 	
+	// If config exists, try to get the host certificate details to extract IP
+	if a.nebulaConfigExists {
+		a.updateMyIPFromCert()
+	} else {
+		// Clear IP if no config exists
+		a.SetMyIP("")
+	}
+	
 	// If state changed, log the change
 	if oldState != a.nebulaConfigExists {
 		if a.nebulaConfigExists {
@@ -47,6 +57,47 @@ func (a *App) updateNebulaConfigState() {
 	
 	// Update start button state
 	a.updateStartButtonState()
+}
+
+// updateMyIPFromCert extracts the IP address from the host certificate
+func (a *App) updateMyIPFromCert() {
+	configDir := filepath.Dir(a.configPath)
+	hostCertPath := filepath.Join(configDir, "host.crt")
+	
+	// Check if host.crt exists
+	if _, err := os.Stat(hostCertPath); os.IsNotExist(err) {
+		log.Println("host.crt not found, cannot extract IP")
+		a.SetMyIP("")
+		return
+	}
+	
+	// Get host certificate details
+	certOutput, err := a.getHostCertDetails(hostCertPath)
+	if err != nil {
+		log.Printf("Failed to get host certificate details: %v", err)
+		a.SetMyIP("")
+		return
+	}
+	
+	// Parse the JSON output
+	var certDetails []HostCertDetails
+	if err := json.Unmarshal([]byte(certOutput), &certDetails); err != nil {
+		log.Printf("Failed to parse host certificate JSON: %v", err)
+		a.SetMyIP("")
+		return
+	}
+	
+	// Extract the IP address from the first certificate's networks field
+	if len(certDetails) > 0 && len(certDetails[0].Details.Networks) > 0 {
+		// Get the first network address and extract just the IP part (before the /)
+		network := certDetails[0].Details.Networks[0]
+		ip := strings.Split(network, "/")[0]
+		a.SetMyIP(ip)
+		log.Printf("Extracted IP from certificate: %s", ip)
+	} else {
+		log.Println("No networks found in host certificate")
+		a.SetMyIP("")
+	}
 }
 
 // updateStartButtonState enables or disables the start button based on config state
