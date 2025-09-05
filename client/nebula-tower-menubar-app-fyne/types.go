@@ -13,14 +13,17 @@ type Config struct {
 
 // App represents the main application
 type App struct {
-	fyneApp             fyne.App
-	config              *Config
-	configPath          string
-	settingsWindow      fyne.Window // Stores the settings window reference
-	settingsOpen        bool
-	towerConnectionLabel *widget.Label
-	saveInviteCodeBtn    *widget.Button
-	inviteCodeField      *widget.Entry
+	fyneApp                        fyne.App
+	config                         *Config
+	configPath                     string
+	settingsWindow                 fyne.Window // Stores the settings window reference
+	settingsOpen                   bool
+	towerConnectionLabel           *widget.Label
+	saveInviteCodeBtn              *widget.Button
+	inviteCodeField                *widget.Entry  // Global invite code field (used in main)
+	currentSettingsInviteCodeField *widget.Entry  // Current settings window invite code field
+	nebulaConfigExists             bool           // Tracks if nebula config files exist
+	startMenuItem                  *fyne.MenuItem // Reference to start menu item for enabling/disabling
 }
 
 // GetLighthouseIP returns the lighthouse IP from the app's configuration

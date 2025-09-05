@@ -52,6 +52,11 @@ func (a *App) saveConfig() error {
 
 // startNebulaService simulates starting the Nebula service
 func (a *App) startNebulaService() {
+	if !a.nebulaConfigExists {
+		log.Println("Cannot start Nebula: configuration files not found")
+		return
+	}
+	
 	log.Println("Starting Nebula service...")
 	// TODO: Implement actual Nebula service start logic
 	// This could include:
@@ -67,11 +72,16 @@ func (a *App) setupSystemTray() {
 		// Load icon resource
 		iconResource := getIcon()
 		
+		// Create start menu item (initially disabled)
+		startMenuItem := fyne.NewMenuItem("Start Nebula", func() {
+			a.startNebulaService()
+		})
+		startMenuItem.Disabled = true // Initially disabled until config is found
+		a.startMenuItem = startMenuItem // Store reference for later updates
+		
 		// Create system tray menu
 		menu := fyne.NewMenu("Nebula Tower",
-			fyne.NewMenuItem("Start Nebula", func() {
-				a.startNebulaService()
-			}),
+			startMenuItem,
 			fyne.NewMenuItemSeparator(),
 			fyne.NewMenuItem("Settings", func() {
 				a.showSettingsWindow()
@@ -91,6 +101,37 @@ func (a *App) setupSystemTray() {
 		log.Println("System tray initialized successfully")
 	} else {
 		log.Println("Warning: Desktop features not available, system tray not initialized")
+	}
+}
+
+// refreshSystemTrayMenu refreshes the system tray menu to update menu item states
+func (a *App) refreshSystemTrayMenu() {
+	if desk, ok := a.fyneApp.(desktop.App); ok {
+		// Create start menu item with current state
+		startMenuItem := fyne.NewMenuItem("Start Nebula", func() {
+			a.startNebulaService()
+		})
+		startMenuItem.Disabled = !a.nebulaConfigExists
+		a.startMenuItem = startMenuItem // Update reference
+		
+		// Recreate system tray menu
+		menu := fyne.NewMenu("Nebula Tower",
+			startMenuItem,
+			fyne.NewMenuItemSeparator(),
+			fyne.NewMenuItem("Settings", func() {
+				a.showSettingsWindow()
+			}),
+			fyne.NewMenuItem("Debug Log", func() {
+				a.showDebugLog()
+			}),
+			fyne.NewMenuItemSeparator(),
+			fyne.NewMenuItem("Quit", func() {
+				a.fyneApp.Quit()
+			}),
+		)
+		
+		desk.SetSystemTrayMenu(menu)
+		log.Println("System tray menu refreshed")
 	}
 }
 
@@ -177,6 +218,9 @@ func main() {
 
 	// Set up system tray
 	nebulaApp.setupSystemTray()
+
+	// Check initial nebula config state and update UI accordingly
+	nebulaApp.updateNebulaConfigState()
 
 	// Create the invite code field
 	inviteCodeField := widget.NewEntry()

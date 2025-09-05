@@ -4,13 +4,81 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
+// checkNebulaConfig checks if all required Nebula config files exist
+func (a *App) checkNebulaConfig() bool {
+	configDir := filepath.Dir(a.configPath)
+	requiredFiles := []string{"config.yaml", "ca.crt", "host.crt", "host.key"}
+
+	for _, file := range requiredFiles {
+		filePath := filepath.Join(configDir, file)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
+// updateNebulaConfigState checks nebula config and updates the app state and UI
+func (a *App) updateNebulaConfigState() {
+	oldState := a.nebulaConfigExists
+	a.nebulaConfigExists = a.checkNebulaConfig()
+	
+	// Log the config directory for debugging
+	configDir := filepath.Dir(a.configPath)
+	log.Printf("Checking nebula config in directory: %s", configDir)
+	
+	// If state changed, log the change
+	if oldState != a.nebulaConfigExists {
+		if a.nebulaConfigExists {
+			log.Println("Nebula configuration detected - enabling start button")
+		} else {
+			log.Println("Nebula configuration not found - disabling start button")
+		}
+	}
+	
+	// Update start button state
+	a.updateStartButtonState()
+}
+
+// updateStartButtonState enables or disables the start button based on config state
+func (a *App) updateStartButtonState() {
+	if a.startMenuItem != nil {
+		previousState := a.startMenuItem.Disabled
+		if a.nebulaConfigExists {
+			a.startMenuItem.Disabled = false
+		} else {
+			a.startMenuItem.Disabled = true
+		}
+		// Refresh the system tray menu only if the state has changed
+		if previousState != a.startMenuItem.Disabled {
+			log.Println("Start button state changed - refreshing system tray menu")
+			a.refreshSystemTrayMenu()
+		}
+	}
+}
+
+// deleteNebulaConfig removes all Nebula configuration files
+func (a *App) deleteNebulaConfig() error {
+	configDir := filepath.Dir(a.configPath)
+	filesToDelete := []string{"config.yaml", "ca.crt", "host.crt", "host.key"}
+
+	for _, file := range filesToDelete {
+		filePath := filepath.Join(configDir, file)
+		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to delete %s: %v", file, err)
+		}
+	}
+	return nil
+}
 
 // showSettingsWindow displays the settings window
 func (a *App) showSettingsWindow() {
@@ -65,16 +133,15 @@ func (a *App) showSettingsWindow() {
 		installNebulaBinariesBtn.Hide()
 	}
 
-	// Use the global invite code field instead of creating a new one
-	inviteCodeEntry := a.inviteCodeField
-	if inviteCodeEntry == nil {
-		// Fallback if inviteCodeField is not initialized
-		inviteCodeEntry = widget.NewEntry()
-		inviteCodeEntry.Disable()
-	}
+	// Check if Nebula config exists
+	nebulaConfigExists := a.checkNebulaConfig()
+
+	// Create a new invite code entry field for this settings window
+	// Don't reuse the global one to avoid state conflicts
+	inviteCodeEntry := widget.NewEntry()
 	inviteCodeEntry.SetText(config.InviteCode)
 	inviteCodeEntry.SetPlaceHolder("Enter your invite code")
-	inviteCodeEntry.Password = true // Hide the invite code for security
+	// inviteCodeEntry.Password = true // Hide the invite code for security
 
 	// Connection status labels
 	towerConnectionLabel := widget.NewLabel("")
@@ -82,7 +149,9 @@ func (a *App) showSettingsWindow() {
 	a.updateConnectionStatus()                    // Initial update
 
 	// Update invite code field state based on lighthouse connection
-	if !connected_to_lighthouse {
+	if connected_to_lighthouse {
+		inviteCodeEntry.Enable()
+	} else {
 		inviteCodeEntry.Disable()
 	}
 
@@ -123,16 +192,73 @@ func (a *App) showSettingsWindow() {
 			log.Printf("Invite Code saved")
 			statusLabel.SetText("✅ Invite Code saved successfully")
 			statusLabel.Importance = widget.SuccessImportance
+			// Check if nebula config state changed after saving invite code
+			// (in case the server creates config files based on the invite code)
+			go func() {
+				// Wait a moment for potential server processing
+				time.Sleep(2 * time.Second)
+				a.updateNebulaConfigState()
+			}()
 		}
 	})
 
 	a.saveInviteCodeBtn = saveInviteCodeBtn // Store reference
-	a.updateConnectionStatus()               // Update button state
+	
+	// Store reference to the current invite code field for connection status updates
+	a.currentSettingsInviteCodeField = inviteCodeEntry
+	
+	// Update button and field states based on connection
+	a.updateConnectionStatus()
 
 	// Create close button
 	closeBtn := widget.NewButton("Close", func() {
-		settingsWindow.Close()
+		a.settingsOpen = false
+		a.settingsWindow = nil
+		a.towerConnectionLabel = nil
+		a.saveInviteCodeBtn = nil
+		a.currentSettingsInviteCodeField = nil // Clear the settings invite code field reference
+		settingsWindow.Hide()
 	})
+
+	// Create Nebula Config card content
+	var nebulaConfigCard fyne.CanvasObject
+	if nebulaConfigExists {
+		// Show status and delete button
+		nebulaConfigStatus := widget.NewLabel("✅ Nebula configuration exists")
+		nebulaConfigStatus.Importance = widget.SuccessImportance
+
+		// Declare button variable first so it can be referenced in the callback
+		var deleteConfigBtn *widget.Button
+		deleteConfigBtn = widget.NewButton("Delete Configuration", func() {
+			if err := a.deleteNebulaConfig(); err != nil {
+				log.Printf("Error deleting Nebula config: %v", err)
+				statusLabel.SetText("❌ Failed to delete Nebula configuration")
+				statusLabel.Importance = widget.DangerImportance
+			} else {
+				log.Println("Nebula configuration deleted")
+				statusLabel.SetText("✅ Nebula configuration deleted - please close and reopen settings to see invite code field")
+				statusLabel.Importance = widget.SuccessImportance
+				// Update nebula config state after deletion
+				a.updateNebulaConfigState()
+				
+				// Disable the delete button since config no longer exists
+				deleteConfigBtn.Disable()
+			}
+		})
+
+		nebulaConfigCard = widget.NewCard("", "", container.NewVBox(
+			widget.NewLabel("Nebula Configuration:"),
+			nebulaConfigStatus,
+			deleteConfigBtn,
+		))
+	} else {
+		// Show invite code field
+		nebulaConfigCard = widget.NewCard("", "", container.NewVBox(
+			widget.NewLabel("Invite Code:"),
+			inviteCodeEntry,
+			saveInviteCodeBtn,
+		))
+	}
 
 	// Create form layout with better organization
 	form := container.NewVBox(
@@ -147,11 +273,7 @@ func (a *App) showSettingsWindow() {
 			nebulaBinaryStatus,
 			installNebulaBinariesBtn,
 		)),
-		widget.NewCard("", "", container.NewVBox(
-			widget.NewLabel("Invite Code:"),
-			inviteCodeEntry,
-			saveInviteCodeBtn,
-		)),
+		nebulaConfigCard,
 		statusLabel,
 		closeBtn,
 	)
@@ -164,6 +286,7 @@ func (a *App) showSettingsWindow() {
 		a.settingsWindow = nil // Clear the reference when the window is closed
 		a.towerConnectionLabel = nil
 		a.saveInviteCodeBtn = nil
+		a.currentSettingsInviteCodeField = nil // Clear the settings invite code field reference
 	})
 
 	// Prevent window close from quitting the app
@@ -171,6 +294,7 @@ func (a *App) showSettingsWindow() {
 		a.settingsOpen = false
 		a.towerConnectionLabel = nil
 		a.saveInviteCodeBtn = nil
+		a.currentSettingsInviteCodeField = nil // Clear the settings invite code field reference
 		settingsWindow.Hide()
 	})
 
@@ -199,11 +323,21 @@ func (a *App) updateConnectionStatus() {
 			}
 		}
 
+		// Update the global invite code field (used in main)
 		if a.inviteCodeField != nil {
 			if connected_to_lighthouse {
 				a.inviteCodeField.Enable()
 			} else {
 				a.inviteCodeField.Disable()
+			}
+		}
+
+		// Update the current settings window invite code field
+		if a.currentSettingsInviteCodeField != nil {
+			if connected_to_lighthouse {
+				a.currentSettingsInviteCodeField.Enable()
+			} else {
+				a.currentSettingsInviteCodeField.Disable()
 			}
 		}
 	})

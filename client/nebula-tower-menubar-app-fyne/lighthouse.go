@@ -62,6 +62,9 @@ func StartLighthousePinger(app *App) {
 			// Update the settings UI if it's open
 			app.UpdateConnectionStatusUI()
 
+			// Periodically check if nebula config state has changed
+			app.updateNebulaConfigState()
+
 			time.Sleep(5 * time.Second)
 		}
 	}()
