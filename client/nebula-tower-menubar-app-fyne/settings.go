@@ -25,6 +25,10 @@ func (a *App) showSettingsWindow() {
 	settingsWindow.Resize(fyne.NewSize(450, 350))
 	settingsWindow.SetFixedSize(true)
 
+	// Position window at center of screen
+	settingsWindow.SetMaster()
+	settingsWindow.CenterOnScreen()
+
 	// Load current config
 	config := a.config
 
@@ -33,29 +37,69 @@ func (a *App) showSettingsWindow() {
 	towerIPEntry.SetText(config.TowerIP)
 	towerIPEntry.SetPlaceHolder("e.g., 127.0.0.1:8080")
 
-	inviteCodeEntry := widget.NewEntry()
+	// Use the global invite code field instead of creating a new one
+	inviteCodeEntry := a.inviteCodeField
+	if inviteCodeEntry == nil {
+		// Fallback if inviteCodeField is not initialized
+		inviteCodeEntry = widget.NewEntry()
+		inviteCodeEntry.Disable()
+	}
 	inviteCodeEntry.SetText(config.InviteCode)
 	inviteCodeEntry.SetPlaceHolder("Enter your invite code")
 	inviteCodeEntry.Password = true // Hide the invite code for security
 
+	// Connection status labels
+	towerConnectionLabel := widget.NewLabel("")
+	a.towerConnectionLabel = towerConnectionLabel // Store reference
+	a.updateConnectionStatus()                    // Initial update
+
+	// Update invite code field state based on lighthouse connection
+	if !connected_to_lighthouse {
+		inviteCodeEntry.Disable()
+	}
+
 	// Status label for feedback
 	statusLabel := widget.NewLabel("")
 
-	// Create save button that saves all settings at once
-	saveBtn := widget.NewButton("Save Settings", func() {
+	// Create save button for Tower IP
+	saveTowerIPBtn := widget.NewButton("Save", func() {
 		a.config.TowerIP = towerIPEntry.Text
-		a.config.InviteCode = inviteCodeEntry.Text
 
 		if err := a.saveConfig(); err != nil {
-			log.Printf("Error saving settings: %v", err)
-			statusLabel.SetText("❌ Failed to save settings")
+			log.Printf("Error saving Tower IP: %v", err)
+			statusLabel.SetText("❌ Failed to save Tower IP")
 			statusLabel.Importance = widget.DangerImportance
 		} else {
-			log.Printf("Settings saved - Tower IP: %s", a.config.TowerIP)
-			statusLabel.SetText("✅ Settings saved successfully")
+			log.Printf("Tower IP saved: %s", a.config.TowerIP)
+			statusLabel.SetText("✅ Tower IP saved successfully")
 			statusLabel.Importance = widget.SuccessImportance
 		}
 	})
+
+	// Create save button for Invite Code
+	saveInviteCodeBtn := widget.NewButton("Save", func() {
+		// Only allow saving if connected to lighthouse
+		if !connected_to_lighthouse {
+			statusLabel.SetText("❌ Must be connected to lighthouse to save invite code")
+			statusLabel.Importance = widget.DangerImportance
+			return
+		}
+
+		a.config.InviteCode = inviteCodeEntry.Text
+
+		if err := a.saveConfig(); err != nil {
+			log.Printf("Error saving Invite Code: %v", err)
+			statusLabel.SetText("❌ Failed to save Invite Code")
+			statusLabel.Importance = widget.DangerImportance
+		} else {
+			log.Printf("Invite Code saved")
+			statusLabel.SetText("✅ Invite Code saved successfully")
+			statusLabel.Importance = widget.SuccessImportance
+		}
+	})
+
+	a.saveInviteCodeBtn = saveInviteCodeBtn // Store reference
+	a.updateConnectionStatus()               // Update button state
 
 	// Create close button
 	closeBtn := widget.NewButton("Close", func() {
@@ -67,13 +111,16 @@ func (a *App) showSettingsWindow() {
 		widget.NewCard("", "", container.NewVBox(
 			widget.NewLabel("Tower IP Address:"),
 			towerIPEntry,
+			saveTowerIPBtn,
+			towerConnectionLabel,
 		)),
 		widget.NewCard("", "", container.NewVBox(
 			widget.NewLabel("Invite Code:"),
 			inviteCodeEntry,
+			saveInviteCodeBtn,
 		)),
 		statusLabel,
-		container.NewHBox(saveBtn, closeBtn),
+		closeBtn,
 	)
 
 	settingsWindow.SetContent(container.NewPadded(form))
@@ -81,9 +128,43 @@ func (a *App) showSettingsWindow() {
 	// Handle window close event
 	settingsWindow.SetOnClosed(func() {
 		a.settingsOpen = false
+		a.towerConnectionLabel = nil
+		a.saveInviteCodeBtn = nil
 	})
 
 	settingsWindow.Show()
+}
+
+// updateConnectionStatus updates the connection status UI elements
+func (a *App) updateConnectionStatus() {
+	// Ensure UI updates happen on the main thread
+	fyne.Do(func() {
+		if a.towerConnectionLabel != nil {
+			if connected_to_lighthouse {
+				a.towerConnectionLabel.SetText("✅ Connected to tower")
+				a.towerConnectionLabel.Importance = widget.SuccessImportance
+			} else {
+				a.towerConnectionLabel.SetText("❌ Not connected to tower")
+				a.towerConnectionLabel.Importance = widget.DangerImportance
+			}
+		}
+
+		if a.saveInviteCodeBtn != nil {
+			if connected_to_lighthouse {
+				a.saveInviteCodeBtn.Enable()
+			} else {
+				a.saveInviteCodeBtn.Disable()
+			}
+		}
+
+		if a.inviteCodeField != nil {
+			if connected_to_lighthouse {
+				a.inviteCodeField.Enable()
+			} else {
+				a.inviteCodeField.Disable()
+			}
+		}
+	})
 }
 
 // showDebugLog displays the debug log information in a window

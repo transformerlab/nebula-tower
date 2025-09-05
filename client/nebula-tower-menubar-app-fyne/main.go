@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/widget"
 )
 
 // loadConfig loads configuration from file
@@ -176,6 +177,17 @@ func main() {
 
 	// Set up system tray
 	nebulaApp.setupSystemTray()
+
+	// Create the invite code field
+	inviteCodeField := widget.NewEntry()
+	inviteCodeField.SetPlaceHolder("Enter invite code")
+	inviteCodeField.Disable() // Initially disabled until connected to the lighthouse
+
+	// Store the invite code field in the app structure so settings can access it
+	nebulaApp.inviteCodeField = inviteCodeField
+
+	// Start the lighthouse pinger
+	StartLighthousePinger(nebulaApp)
 
 	log.Println("Starting Nebula Tower menubar application...")
 
