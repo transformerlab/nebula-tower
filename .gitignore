@@ -24,12 +24,12 @@ build/*
 
 # Rust build artifacts
 src-tauri/target/
-client/nebula-tower-menubar-app/src-tauri/target/
+client/nebula-tower-menubar-app-tauri-archived/src-tauri/target/
 
 # Tauri mobile platform build artifacts (if applicable)
 gen/*/build/
 gen/*/DerivedData/
-client/nebula-tower-menubar-app/frontend/*
+client/nebula-tower-menubar-app-tauri-archived/frontend/*
 
 # Environment files
 .env

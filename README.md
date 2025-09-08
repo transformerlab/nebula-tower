@@ -11,8 +11,9 @@ If you run the server component on a machine with a public IP address (like a $6
 - 🔒 Create a Certificate Authority (CA) Certificate
 - 🌐 Set up a Lighthouse server and its configuration
 - 🖥️ Create hosts and generate their respective certificates and configs
+- 🎟️ Create invites to invite users to a host
 
-Afterward, clients (hosts) can easily download Nebula Tower generated configuration files and connect to the Nebula network using either a simple script or a Menubar application.
+Clients (hosts) can easily download Nebula Tower generated configuration files and connect to the Nebula network using either a simple script or a Menubar application.
 
 ## Important Considerations
 
@@ -66,7 +67,7 @@ cp .env.sample .env
 Do the above but then run the frontend separately
 `cd frontend; npm run dev`
 
-# Run the Client
+# Run the Client Menubar App
 
 ## Tauri app
 
