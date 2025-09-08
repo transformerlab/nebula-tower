@@ -4,15 +4,15 @@ TODO:
 ---
 
 Server:
-- I don't think we are refreshing tokens properly
-- Give each org a different CA
+- We are not refreshing tokens properly for auth
+- Give each org a different CA cert for enhanced security
 - How do we handle that central certs expire in a year. Can we refresh hosts in a nice way?
-- Make hosts create their own private keys and have server sign them
+- Make hosts create their own private keys and have server sign them (https://nebula.defined.net/docs/guides/sign-certificates-with-public-keys/)
 - Landing page when setting up certs
-- Ability to ask the lighthouse if your cert needs a reload
-- reusable keys
+- Ability to ask the lighthouse if your cert needs a reload if the config has changed
+- reusable invites (with a limit)
 - ability to see keys and delete them
-- ability to set expiration date on keys
+- DONE ability to set expiration date on keys
 
 
 Menubar App:
