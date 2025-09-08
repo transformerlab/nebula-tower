@@ -76,9 +76,27 @@ function MainLayout({ children }) {
 function Home() {
   return (
     <Sheet>
-      <Typography level="h2" mt={3}>Nebula Tower</Typography>
-      <Box sx={{ border: '10px solid #999', m: 4 }}>
-        <img src="/tower.png" alt="Tower" width="100%" />
+      <Typography level="h1" mt={1
+
+      }>Nebula Tower</Typography>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          m: 4,
+          height: 'calc(100vh - 200px)', // Adjust height to fit within the visible space
+          overflow: 'hidden',
+        }}
+      >
+        <img
+          src="/tower.png"
+          alt="Tower"
+          style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            objectFit: 'contain', // Maintain aspect ratio
+          }}
+        />
       </Box>
     </Sheet>
   );
