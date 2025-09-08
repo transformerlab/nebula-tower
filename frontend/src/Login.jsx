@@ -26,7 +26,7 @@ export default function Login() {
                 const txt = await res.text().catch(() => '')
                 throw new Error(txt || 'Login failed')
             }
-            const data = res;
+            const data = await res.json();
             const token = data?.access_token || data?.token || data?.accessToken
             if (!token) throw new Error('Token missing in response')
             const ok = signIn({

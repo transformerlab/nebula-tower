@@ -1,11 +1,13 @@
 import useSWR from 'swr';
 import { Box, Button, Typography, Divider, Sheet, List, ListItem, Input, Table, Modal, ModalDialog, ModalClose, Chip } from '@mui/joy';
+import { useAuthHeader } from "react-auth-kit";
 
 import { useAuthedFetcher } from './lib/api';
 import API_BASE_URL from './apiConfig';
 
 export default function HostDetailsModal({ selectedHost, selectedOrg, onClose }) {
     const fetcher = useAuthedFetcher();
+    const getAuthHeader = useAuthHeader();
     const { data: hostDetailsData, error: hostDetailsError, isLoading: hostDetailsLoading } = useSWR(
         selectedHost && selectedOrg
             ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
@@ -60,9 +62,26 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
                         {/* <pre>{JSON.stringify(firstCert, null, 2)}</pre> */}
                         <Divider sx={{ my: 2 }} />
                         <Button
-                            onClick={() => {
-                                const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
-                                window.open(downloadUrl, '_blank');
+                            onClick={async () => {
+                                try {
+                                    const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
+
+                                    const res = await fetch(downloadUrl);
+
+                                    if (res.ok) {
+                                        const blob = await res.blob();
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `${selectedHost}-config.zip`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        window.URL.revokeObjectURL(url);
+                                        document.body.removeChild(a);
+                                    }
+                                } catch (error) {
+                                    console.error('Download failed:', error);
+                                }
                             }}
                             sx={{ mb: 4 }}
                         >
