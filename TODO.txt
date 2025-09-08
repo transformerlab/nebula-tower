@@ -10,6 +10,10 @@ Server:
 - Make hosts create their own private keys and have server sign them
 - Landing page when setting up certs
 - Ability to ask the lighthouse if your cert needs a reload
+- reusable keys
+- ability to see keys and delete them
+- ability to set expiration date on keys
+
 
 Menubar App:
 - Display your internal IP
