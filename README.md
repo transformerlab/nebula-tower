@@ -11,7 +11,7 @@ If you run the server component on a machine with a public IP address (like a $6
 - 🔒 Create a Certificate Authority (CA) Certificate
 - 🌐 Set up a Lighthouse server and its configuration
 - 🖥️ Create hosts and generate their respective certificates and configs
-- 🎟️ Create invites to invite users to a host
+- 🎟️ Create invites to connect users to a host
 
 Clients (hosts) can easily download Nebula Tower generated configuration files and connect to the Nebula network using either a simple script or a Menubar application.
 
@@ -95,7 +95,7 @@ go to `cd client/nebula-tower-menubar-app-tyne`
 
 # Credits
 
-This wouldn't be possible without the awesome work of <a href="https://github.com/slackhq/nebula">Slack Nebula</a>
+This wouldn't be possible without the awesome work of <a href="https://github.com/slackhq/nebula">Slack Nebula</a>. If you are looking for enterprise Nebula, you should work with the creators of Nebula at: https://www.defined.net/
 
 We also use: [Fyne](https://fyne.io/), [SQLite](https://sqlite.org/), [FastAPI](https://fastapi.tiangolo.com/), SQLAlchemy, FastAPI-users, React, [MUI Joy](https://mui.com/joy-ui/getting-started/), Lucide Icons, SWR, and more.
 
