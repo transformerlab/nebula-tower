@@ -33,7 +33,7 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
 
     return (
         <Modal open={!!selectedHost} onClose={onClose}>
-            <ModalDialog sx={{ minWidth: 400, maxWidth: 600, overflow: 'auto' }}>
+            <ModalDialog sx={{ width: "80vw", minWidth: 400, overflow: 'auto' }}>
                 <ModalClose />
                 <Typography level="h2" fontSize="1.2rem" mb={2}>
                     Host Details: <b>{selectedHost}</b>

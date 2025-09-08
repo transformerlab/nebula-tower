@@ -166,8 +166,8 @@ function Hosts() {
   };
 
   return (
-    <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2, display: 'flex', flexDirection: 'row', gap: 2 }}>
-      <Sheet sx={{ width: '230px', height: '100%', flexShrink: 0 }} >
+    <Sheet sx={{ minWidth: 700, mx: 'auto', paddingTop: 2, display: 'flex', flexDirection: 'row', gap: 2 }}>
+      <Sheet sx={{ width: '180px', height: '100%', flexShrink: 0 }} >
         <Typography level="h3" mb={2} sx={{ height: '40px' }}>Subnet</Typography>
         <List sx={{ mb: 1 }}>
           {orgs.map(org => (
@@ -183,7 +183,7 @@ function Hosts() {
               <ListItemDecorator><BuildingIcon /></ListItemDecorator>
               <ListItemContent>
                 <span>{org.name}</span>
-                <Typography level="body2" color="neutral" sx={{ fontSize: '11px' }} noWrap>
+                <Typography level="body2" color="neutral" sx={{ fontSize: '8px', fontWeight: 'normal' }} noWrap>
                   {org.subnet}
                 </Typography>
               </ListItemContent>
