@@ -73,14 +73,12 @@ Do the above but then run the frontend separately
 
 ### For Development:
 
-go to `cd client/nebula-tower-menubar-app`
-`npm install`
-`npx tauri dev`
+go to `cd client/nebula-tower-menubar-app-tyne`
+`./dev.sh`
 
 ### Build for production:
 
-`npx tauri build`
-The build goes in `src-tauri/src/target/release`
+`./build.sh'`
 
 # Repo Organization:
 
@@ -90,7 +88,7 @@ The build goes in `src-tauri/src/target/release`
 | `frontend/`                       | React app for the server                      |
 | `data/`                           | Directory where the server stores data    |
 | `bin/`                            | Directory where Nebula binaries live          |
-| `client/nebula-tower-menubar-app` | Directory for the client Menubar application  |
+| `client/nebula-tower-menubar-app-fyne` | Directory for the client Menubar application  |
 
 # License
 
