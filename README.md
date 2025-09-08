@@ -36,31 +36,34 @@ Menubar App Screenshot:
 
 (currently works on MacOS and Linux)
 
-- Install <a href="https://docs.astral.sh/uv/">uv</a>
+1. Install <a href="https://docs.astral.sh/uv/">uv</a>
 
 ```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-- <a href="https://github.com/transformerlab/nebula-tower/archive/refs/heads/main.zip">Download</a> and unzip or clone this Repo
+2. <a href="https://github.com/transformerlab/nebula-tower/archive/refs/heads/main.zip">Download</a> and unzip or clone this Repo
 
+3. Build backend
 ```bash
+cd nebula-tower # CD into the root directory of this project
 ./install_nebula_binaries.sh` # downloads nebula nightly
 cd frontend
 npm install # build the react app
 ```
-- edit `frontend/.env` and set `VITE_API_BASE_URL` to your server's address e.g. http://162.243.38.134:8000 (make sure you are editing your `frontend/.env` as there is a different .env in the root of the project)
+4. edit `frontend/.env` and set `VITE_API_BASE_URL` to your server's address e.g. http://162.243.38.134:8000 (make sure you are editing your `frontend/.env` as there is a different .env in the root of the project)
 
+5. Build the frontend and copy sample env
 ```
 npm run build
 cd ..
 cp .env.sample .env
 ```
 
-* edit .env and set the variables
+6. Edit .env and set the variables
 
-- Run `uv run create_admin.py` and follow the instructions to create your first admin user (make sure to enable the promote flag)
-- Now run `uv run main.py` (you will have to do sudo in front if on macOS)
+7. Run `uv run create_admin.py` and follow the instructions to create your first admin user (make sure to enable the promote flag)
+8. Now run `uv run main.py` (you will have to do sudo in front if on macOS)
 
 ## To run this in development:
 
@@ -69,7 +72,7 @@ Do the above but then run the frontend separately
 
 # Run the Client Menubar App
 
-## Tauri app
+## Fyne Client app
 
 ### For Development:
 
@@ -89,6 +92,12 @@ go to `cd client/nebula-tower-menubar-app-tyne`
 | `data/`                           | Directory where the server stores data    |
 | `bin/`                            | Directory where Nebula binaries live          |
 | `client/nebula-tower-menubar-app-fyne` | Directory for the client Menubar application  |
+
+# Credits
+
+This wouldn't be possible without the awesome work of <a href="https://github.com/slackhq/nebula">Slack Nebula</a>
+
+We also use: [Fyne](https://fyne.io/), [SQLite](https://sqlite.org/), [FastAPI](https://fastapi.tiangolo.com/), SQLAlchemy, FastAPI-users, React, [MUI Joy](https://mui.com/joy-ui/getting-started/), Lucide Icons, SWR, and more.
 
 # License
 
