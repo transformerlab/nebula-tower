@@ -7,7 +7,7 @@ export function useAuthedFetcher() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  return async (path, init = {}) => {
+  return async (path, init = {}, raw = false) => {
     const token = getAuthHeader();
     const res = await fetch(
       path.startsWith("http") ? path : `${API_BASE_URL}${path}`,
@@ -27,6 +27,9 @@ export function useAuthedFetcher() {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(text || `HTTP ${res.status}`);
+    }
+    if (raw) {
+      return res;
     }
     const ct = res.headers.get("content-type") || "";
     return ct.includes("application/json") ? res.json() : res.text();

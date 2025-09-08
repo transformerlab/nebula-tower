@@ -7,7 +7,6 @@ import API_BASE_URL from './apiConfig';
 
 export default function HostDetailsModal({ selectedHost, selectedOrg, onClose }) {
     const fetcher = useAuthedFetcher();
-    const getAuthHeader = useAuthHeader();
     const { data: hostDetailsData, error: hostDetailsError, isLoading: hostDetailsLoading } = useSWR(
         selectedHost && selectedOrg
             ? `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}`
@@ -66,7 +65,7 @@ export default function HostDetailsModal({ selectedHost, selectedOrg, onClose })
                                 try {
                                     const downloadUrl = `${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts/${encodeURIComponent(selectedHost)}/download`;
 
-                                    const res = await fetch(downloadUrl);
+                                    const res = await fetcher(downloadUrl, {}, true);
 
                                     if (res.ok) {
                                         const blob = await res.blob();
