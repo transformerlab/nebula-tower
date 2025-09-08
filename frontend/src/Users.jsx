@@ -2,11 +2,10 @@ import { useState } from 'react'
 import useSWR, { mutate } from 'swr'
 import { Box, Button, Chip, Input, Modal, ModalClose, ModalDialog, Sheet, Table, Typography } from '@mui/joy'
 import API_BASE_URL from './apiConfig'
-import { useAuthedFetcher, useAuthedFetch } from './lib/api'
+import { useAuthedFetcher } from './lib/api'
 
 export default function Users() {
     const fetcher = useAuthedFetcher()
-    const authedFetch = useAuthedFetch()
     const { data, error, isLoading } = useSWR(`${API_BASE_URL}/admin/api/users`, fetcher)
     const users = Array.isArray(data) ? data : []
 
@@ -20,7 +19,7 @@ export default function Users() {
 
     async function handlePromote(userId, toAdmin) {
         setActionError('')
-        const res = await authedFetch(`/admin/api/users/${userId}`, {
+        const res = await fetcher(`/admin/api/users/${userId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_superuser: !!toAdmin })
@@ -36,7 +35,7 @@ export default function Users() {
     async function handleDelete(userId, email) {
         setActionError('')
         if (!confirm(`Delete user ${email}? This cannot be undone.`)) return
-        const res = await authedFetch(`/admin/api/users/${userId}`, { method: 'DELETE' })
+        const res = await fetcher(`/admin/api/users/${userId}`, { method: 'DELETE' })
         if (!res.ok) {
             const t = await res.text().catch(() => '')
             setActionError(t || 'Failed to delete user')
@@ -56,7 +55,7 @@ export default function Users() {
         setPwLoading(true)
         setActionError('')
         try {
-            const res = await authedFetch(`/admin/api/users/${selectedUser.id}`, {
+            const res = await fetcher(`/admin/api/users/${selectedUser.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password: newPassword })

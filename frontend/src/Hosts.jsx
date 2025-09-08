@@ -3,7 +3,7 @@ import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
 import { Box, Button, Typography, Sheet, List, ListItemButton, ListItemContent, Input, Table, Modal, ModalDialog, ModalClose, ListItemDecorator } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
-import { useAuthedFetcher, useAuthedFetch } from './lib/api';
+import { useAuthedFetcher } from './lib/api';
 import HostDetailsModal from './HostDetailsModal';
 
 
@@ -52,7 +52,6 @@ function formatHostIP(ip) {
 
 function Hosts() {
   const fetcher = useAuthedFetcher();
-  const authedFetch = useAuthedFetch();
   const [selectedOrg, setSelectedOrg] = useState('');
   // const [hostsFilter, setHostsFilter] = useState(''); // reserved for future filtering
   const [name, setName] = useState('');
@@ -95,7 +94,7 @@ function Hosts() {
     }
     setLoading(true);
     try {
-      const resp = await authedFetch(`/admin/api/hosts/new`, {
+      const resp = await fetcher(`/admin/api/hosts/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -124,7 +123,7 @@ function Hosts() {
     }
     setOrgCreateLoading(true);
     try {
-      const resp = await authedFetch(`/admin/api/orgs/new`, {
+      const resp = await fetcher(`/admin/api/orgs/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newOrgName.trim() })
@@ -151,7 +150,7 @@ function Hosts() {
       return;
     }
     try {
-      const resp = await authedFetch(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
+      const resp = await fetcher(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
         // No body needed, org is passed as query param

@@ -4,7 +4,7 @@ import API_BASE_URL from './apiConfig';
 import { Box, Button, Input, Typography, Sheet, CircularProgress, Alert } from '@mui/joy';
 import { useAuthedFetcher } from './lib/api';
 
-export default function Cert() {
+export default function Invites() {
   const fetcher = useAuthedFetcher();
 
   const [orgName, setOrgName] = useState('');

@@ -1,12 +1,11 @@
 import useSWR, { mutate } from 'swr';
 import { useState } from 'react';
-import { Box, Typography, Sheet, CircularProgress, Alert, Button } from '@mui/joy';
+import { Table, Box, Typography, Sheet, CircularProgress, Alert, Button } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
-import { useAuthedFetcher, useAuthedFetch } from './lib/api';
+import { useAuthedFetcher } from './lib/api';
 
 export default function Lighthouse() {
   const fetcher = useAuthedFetcher();
-  const authedFetch = useAuthedFetch();
   const { data: config, error, isLoading } = useSWR(
     `${API_BASE_URL}/admin/api/lighthouse/config`,
     fetcher
@@ -21,7 +20,7 @@ export default function Lighthouse() {
     setRecreateLoading(true);
     setRecreateError(null);
     try {
-      const res = await authedFetch(`/admin/api/lighthouse/create_config`, {
+      const res = await fetcher(`/admin/api/lighthouse/create_config`, {
         method: 'POST'
       });
       if (!res.ok) {
@@ -47,10 +46,12 @@ export default function Lighthouse() {
               Some config or certs are missing in data/lighthouse.
             </Alert>
           )}
-          <Typography level="body-lg" mb={1}>External IP: {config?.external_ip ?? '[Missing external IP]'}</Typography>
-          <Typography level="body-lg" mb={1}>Port: {config?.port ?? '[Missing port]'}</Typography>
-          <Typography level="body-lg" mb={1}>Internal IP: {config?.internal_ip ?? '[Missing internal IP]'}</Typography>
-          <Typography level="body-lg" mb={1}>Config file (config.yaml):</Typography>
+          <Table><tr><td>External IP:</td><td>{config?.external_ip ?? '[Missing external IP]'}</td></tr>
+            <tr><td>Port:</td><td>{config?.port ?? '[Missing port]'}</td></tr>
+            <tr><td>Internal IP:</td><td>{config?.internal_ip ?? '[Missing internal IP]'}</td></tr>
+          </Table>
+
+          <Typography level="body-lg" mt={2} mb={1}>Config file (config.yaml):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
             {config?.config ?? '[Missing config.yaml]'}
           </pre>

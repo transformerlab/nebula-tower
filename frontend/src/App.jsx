@@ -2,18 +2,19 @@ import React from 'react';
 import useSWR from 'swr';
 import { CssBaseline, Box, Divider, Typography, Sheet, List, ListItem, ListItemButton, ListItemDecorator, Button, Avatar, Chip } from '@mui/joy';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import Cert from './Cert';
-import Hosts from './Hosts';
-import { Shield, Server, TowerControlIcon, Users as UsersIcon } from 'lucide-react';
-import Lighthouse from './Lighthouse';
+
+import { Shield, Server, TowerControlIcon, Users as UsersIcon, TicketIcon } from 'lucide-react';
 import NebulaProcessStatusCard from './NebulaProcessStatusCard';
 import API_BASE_URL from './apiConfig';
-import Login from './Login';
 import { useIsAuthenticated, useSignOut } from 'react-auth-kit';
 import { useAuthedFetcher } from './lib/api';
 import md5 from 'blueimp-md5';
 import Users from './Users';
-
+import Cert from './Cert';
+import Hosts from './Hosts';
+import Lighthouse from './Lighthouse';
+import Invites from './Invites';
+import Login from './Login';
 
 
 function Sidebar() {
@@ -30,6 +31,7 @@ function Sidebar() {
   const navItems = [
     { label: 'Lighthouse', to: '/lighthouse', icon: <TowerControlIcon size={20} />, disabled: !certExists },
     { label: 'Hosts', to: '/hosts', icon: <Server size={20} />, disabled: !lighthouseConfigExists },
+    { label: 'Invites', to: '/invites', icon: <TicketIcon size={20} />, disabled: !lighthouseConfigExists },
     { label: 'Primary Cert', to: '/cert', icon: <Shield size={20} />, disabled: false },
     ...(me?.is_superuser ? [{ label: 'Users', to: '/users', icon: <UsersIcon size={20} />, disabled: false }] : []),
   ];
@@ -124,6 +126,7 @@ function App() {
                   <Route path="/cert" element={<Cert />} />
                   <Route path="/lighthouse" element={<Lighthouse />} />
                   <Route path="/hosts" element={<Hosts />} />
+                  <Route path="/invites" element={<Invites />} />
                   <Route path="/users" element={<Users />} />
                 </Routes>
               </MainLayout>

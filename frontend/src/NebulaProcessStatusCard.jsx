@@ -3,14 +3,13 @@ import useSWR from 'swr';
 import API_BASE_URL from './apiConfig';
 import { PlayCircle, StopCircle } from "lucide-react";
 import { useState } from 'react';
-import { useAuthedFetcher, useAuthedFetch } from './lib/api';
+import { useAuthedFetcher } from './lib/api';
 
 
 
 
 function NebulaProcessStatusCard({ disableButtons = false }) {
     const fetcher = useAuthedFetcher();
-    const authedFetch = useAuthedFetch();
     const { data, mutate } = useSWR(
         `${API_BASE_URL}/admin/api/nebula_process/status`,
         fetcher,
@@ -22,7 +21,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStart = async () => {
         setLoading(true)
         try {
-            await authedFetch(`/admin/api/nebula_process/start`, { method: "POST" })
+            await fetcher(`/admin/api/nebula_process/start`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)
@@ -32,7 +31,7 @@ function NebulaProcessStatusCard({ disableButtons = false }) {
     const handleStop = async () => {
         setLoading(true)
         try {
-            await authedFetch(`/admin/api/nebula_process/stop`, { method: "POST" })
+            await fetcher(`/admin/api/nebula_process/stop`, { method: "POST" })
             mutate();
         } finally {
             setLoading(false)

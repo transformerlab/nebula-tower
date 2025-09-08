@@ -7,33 +7,6 @@ export function useAuthedFetcher() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  return async (url) => {
-    const token = getAuthHeader();
-    const res = await fetch(
-      url.startsWith("http") ? url : `${API_BASE_URL}${url}`,
-      {
-        headers: token ? { Authorization: token } : {},
-        credentials: "include",
-      }
-    );
-    if (res.status === 401) {
-      navigate("/login", { state: { from: location } });
-      return;
-    }
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `HTTP ${res.status}`);
-    }
-    const ct = res.headers.get("content-type") || "";
-    return ct.includes("application/json") ? res.json() : res.text();
-  };
-}
-
-export function useAuthedFetch() {
-  const getAuthHeader = useAuthHeader();
-  const location = useLocation();
-  const navigate = useNavigate();
-
   return async (path, init = {}) => {
     const token = getAuthHeader();
     const res = await fetch(
@@ -47,10 +20,15 @@ export function useAuthedFetch() {
         credentials: "include",
       }
     );
-    if (res.status === 401) {
+    if (res.status === 401 || res.status === 403) {
       navigate("/login", { state: { from: location } });
       return;
     }
-    return res;
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    const ct = res.headers.get("content-type") || "";
+    return ct.includes("application/json") ? res.json() : res.text();
   };
 }
