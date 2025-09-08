@@ -16,6 +16,7 @@ from routers.lighthouse_router import router as lighthouse_router
 from routers.nebula_process_router import router as nebula_process_router
 from routers.client_router import router as client_router
 from routers.ca_router import router as ca_router
+from routers.invites_router import router as invites_router 
 
 # --- FastAPI Users imports & setup (new) ---
 from typing import Optional, AsyncGenerator
@@ -170,6 +171,11 @@ app.include_router(
 )
 app.include_router(
     nebula_process_router,
+    prefix="/admin",
+    dependencies=[Depends(current_superuser)]
+)
+app.include_router(
+    invites_router,
     prefix="/admin",
     dependencies=[Depends(current_superuser)]
 )

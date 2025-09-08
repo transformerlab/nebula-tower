@@ -1,130 +1,130 @@
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
-import { Box, Button, Input, Typography, Sheet, CircularProgress, Alert } from '@mui/joy';
+import {
+  Box, Button, Input, Typography, Sheet, CircularProgress, Alert,
+  Table, Switch, FormControl, FormLabel, Stack, IconButton
+} from '@mui/joy';
 import { useAuthedFetcher } from './lib/api';
+import { EyeIcon, EyeOffIcon, TicketIcon } from 'lucide-react'
 
 export default function Invites() {
   const fetcher = useAuthedFetcher();
 
-  const [orgName, setOrgName] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState(null);
-
-  // SWR for CA cert
-  const { data: caData, error: caError, isLoading: caLoading } = useSWR(
-    `${API_BASE_URL}/admin/api/ca`,
+  // SWR for invites
+  const { data: invitesData, error: invitesError, isLoading: invitesLoading } = useSWR(
+    `${API_BASE_URL}/admin/api/invites`,
     fetcher
   );
 
-  // SWR for CA info (only fetch if CA exists)
-  const shouldFetchInfo = caData && caData.exists;
-  const { data: infoData, error: infoError, isLoading: infoLoading } = useSWR(
-    shouldFetchInfo ? `${API_BASE_URL}/admin/api/ca/info` : null,
-    fetcher
-  );
+  // Filter states
+  const [orgFilter, setOrgFilter] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
-  // Parse certInfo
-  let certInfo = null;
-  if (infoData && infoData.info) {
-    try {
-      let parsedArr = typeof infoData.info === 'string'
-        ? JSON.parse(infoData.info)
-        : infoData.info;
-      certInfo = Array.isArray(parsedArr) && parsedArr.length > 0 ? parsedArr[0] : null;
-    } catch {
-      certInfo = null;
-    }
-  }
+  // Track which codes are shown
+  const [shownCodes, setShownCodes] = useState({});
 
-  const handleRefresh = () => {
-    mutate(`${API_BASE_URL}/admin/api/ca`);
-    if (shouldFetchInfo) mutate(`${API_BASE_URL}/admin/api/ca/info`);
+  const handleToggleCode = code => {
+    setShownCodes(prev => ({
+      ...prev,
+      [code]: !prev[code]
+    }));
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setCreating(true);
-    setError(null);
-    try {
-      const res = await fetcher(`/admin/api/ca`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: orgName })
-      });
-      setOrgName('');
-      mutate(`${API_BASE_URL}/admin/api/ca`);
-      mutate(`${API_BASE_URL}/admin/api/ca/info`);
-    } catch {
-      setError('Failed to create CA cert.');
-    }
-    setCreating(false);
-  };
-
-  const loading = caLoading || (shouldFetchInfo && infoLoading);
-
-  let certExpiresIn = certInfo && certInfo.details && certInfo.details.notAfter && !isNaN(new Date(certInfo.details.notAfter))
-    ? Math.round((new Date(certInfo.details.notAfter) - new Date()) / (1000 * 60 * 60 * 24))
-    : null;
+  // Filtered invites
+  const invites = invitesData?.invites || [];
+  const filteredInvites = invites.filter(invite => {
+    const orgMatch = orgFilter ? invite.org.toLowerCase().includes(orgFilter.toLowerCase()) : true;
+    const activeMatch = showInactive ? true : invite.active;
+    return orgMatch && activeMatch;
+  });
 
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2, width: '100%' }}>
-      <Typography level="h1" fontSize="2rem" mb={2}>CA Certificate</Typography>
-      {certExpiresIn !== null && certExpiresIn < 120 && (
-        <Alert color="warning" sx={{ mb: 2 }}>
-          Warning: The certificate is expiring in {certExpiresIn} days. Please renew it soon. https://nebula.defined.net/docs/guides/rotating-certificate-authority/
-        </Alert>
-      )}
-      {loading ? <CircularProgress /> : (
+      <Typography level="h1" fontSize="2rem" mb={2}>Invites</Typography>
+
+      {/* Filter Controls */}
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+        <FormControl>
+          <FormLabel>Filter by Org</FormLabel>
+          <Input
+            placeholder="Org name"
+            value={orgFilter}
+            onChange={e => setOrgFilter(e.target.value)}
+            size="sm"
+          />
+        </FormControl>
+        <FormControl>
+          <FormLabel>Show Inactive</FormLabel>
+          <Switch
+            checked={showInactive}
+            onChange={e => setShowInactive(e.target.checked)}
+            size="sm"
+          />
+        </FormControl>
+      </Stack>
+
+      {invitesLoading ? <CircularProgress /> : (
         <>
-          {caData && caData.cert ? (
-            <Box className="cert-box" sx={{ p: 2, borderRadius: 2, mt: 2, overflow: 'hidden' }}>
-              <Typography level="h3">CA Certificate</Typography>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData.cert}</pre>
-              <Typography level="h3"><b>CA Key:</b></Typography>
-              <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{caData?.key}{caData?.key && '.. (rest hidden)'}</pre>
-              {certInfo && certInfo.details && (
-                <Box sx={{ mt: 2, overflow: 'hidden', maxWidth: '500px' }}>
-                  <Typography level="h3">Certificate Info</Typography>
-                  <ul style={{ textAlign: 'left' }}>
-                    <li><b>Organization Name:</b> {certInfo.details.name}</li>
-                    <li><b>Is CA:</b> {certInfo.details.isCa ? 'Yes' : 'No'}</li>
-                    <li><b>Issuer:</b> {certInfo.details.issuer || '-'}</li>
-                    <li><b>Curve:</b> {certInfo.curve}</li>
-                    <li><b>Valid From:</b> {new Date(certInfo.details.notBefore).toLocaleString()}</li>
-                    <li>
-                      <b>Valid To:</b> {new Date(certInfo.details.notAfter).toLocaleString()}
-                      <span style={{ color: certExpiresIn < 120 ? 'red' : 'inherit' }}>
-                        expires in {certExpiresIn} days
-                      </span>
-                    </li>
-                    <li><b>Public Key:</b> <code>{certInfo.publicKey}</code></li>
-                    <li><b>Fingerprint:</b> <code>{certInfo.fingerprint}</code></li>
-                    <li><b>Signature:</b> <code>{certInfo.signature}</code></li>
-                  </ul>
-                </Box>
-              )}
-            </Box>
+          {filteredInvites.length > 0 ? (
+            <Table sx={{ mt: 2 }}>
+              <thead>
+                <tr>
+                  <th width="40px">&nbsp;</th>
+                  <th>Org</th>
+                  <th>Date</th>
+                  <th>Code</th>
+                  <th>Active</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInvites.map((invite, idx) => {
+                  const codeShown = shownCodes[invite.code];
+                  const code = invite.code || '';
+                  const shortCode = code.length > 8
+                    ? `${code.slice(0, 4)}...${code.slice(-4)}`
+                    : code;
+                  return (
+                    <tr key={code || idx}>
+                      <td><TicketIcon /></td>
+                      <td>{invite.org}</td>
+                      <td>{invite.date}</td>
+                      <td>
+                        <Typography component="span" sx={{ fontFamily: 'monospace' }} startDecorator={<IconButton
+                          size="sm"
+                          variant="plain"
+                          onClick={() => handleToggleCode(code)}
+                          sx={{ ml: 1 }}
+                          aria-label={codeShown ? "Hide code" : "Show code"}
+                        >
+                          {codeShown ? <EyeOffIcon /> : <EyeIcon />}
+                        </IconButton>}>
+                          {codeShown ? code : shortCode}
+                        </Typography>
+
+                      </td>
+                      <td>
+                        {invite.active ? (
+                          <Typography color="success">Active</Typography>
+                        ) : (
+                          <Typography color="danger">Inactive</Typography>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
           ) : (
             <Box>
-              <Typography>No CA certificate found.</Typography>
-              <form onSubmit={handleCreate} style={{ marginTop: 16 }}>
-                <Input
-                  placeholder="Organization Name"
-                  value={orgName}
-                  onChange={e => setOrgName(e.target.value)}
-                  required
-                  sx={{ mb: 2 }}
-                />
-                <Button type="submit" loading={creating}>Create CA</Button>
-              </form>
+              <Typography>No invites found.</Typography>
             </Box>
           )}
         </>
       )}
-      {(error || caError || infoError) && (
+      {(invitesError) && (
         <Alert color="danger" sx={{ mt: 2 }}>
-          {error || caError?.message || infoError?.message || 'Failed to load certificate info.'}
+          {invitesError?.message || 'Failed to load invites.'}
         </Alert>
       )}
     </Sheet>
