@@ -3,7 +3,7 @@ import useSWR, { mutate } from 'swr';
 import API_BASE_URL from './apiConfig';
 import {
   Box, Button, Input, Typography, Sheet, CircularProgress, Alert,
-  Table, Switch, FormControl, FormLabel, Stack, IconButton
+  Table, Switch, FormControl, FormLabel, Stack, IconButton, Chip
 } from '@mui/joy';
 import { useAuthedFetcher } from './lib/api';
 import { EyeIcon, EyeOffIcon, TicketIcon } from 'lucide-react'
@@ -72,7 +72,7 @@ export default function Invites() {
                 <tr>
                   <th width="40px">&nbsp;</th>
                   <th>Org</th>
-                  <th>Date</th>
+                  <th>Expires</th>
                   <th>Code</th>
                   <th>Active</th>
                 </tr>
@@ -88,7 +88,7 @@ export default function Invites() {
                     <tr key={code || idx}>
                       <td><TicketIcon /></td>
                       <td>{invite.org}</td>
-                      <td>{invite.date}</td>
+                      <td>{invite.expires_at ? `${new Date(invite.expires_at).toLocaleString()} (${Math.ceil((new Date(invite.expires_at) - new Date()) / (1000 * 60 * 60 * 24))} days from now)` : ''}</td>
                       <td>
                         <Typography component="span" sx={{ fontFamily: 'monospace' }} startDecorator={<IconButton
                           size="sm"
@@ -105,9 +105,9 @@ export default function Invites() {
                       </td>
                       <td>
                         {invite.active ? (
-                          <Typography color="success">Active</Typography>
+                          <Chip color="success">Active</Chip>
                         ) : (
-                          <Typography color="danger">Inactive</Typography>
+                          <Chip color="danger">Inactive</Chip>
                         )}
                       </td>
                     </tr>

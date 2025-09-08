@@ -16,7 +16,7 @@ router = APIRouter()
 class Invite(BaseModel):
     active: bool
     org: str
-    date: str
+    expires_at: str
     code: str
 
 class InvitesResponse(BaseModel):
@@ -45,7 +45,7 @@ def get_invites(org: str = None, active: bool = None):
                     filtered_invites.append(
                         Invite(
                             org=item.get('org'),
-                            date=date_str,
+                            expires_at=date_str,
                             active=item.get('active'),
                             code=item.get('code')
                         )
