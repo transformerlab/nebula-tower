@@ -20,11 +20,13 @@ function formatHostIP(ip) {
         key={index}
         sx={{
           display: 'inline-block',
-          padding: '4px 8px',
+          padding: '0px 2px',
           border: '1px solid #ccc',
           borderRadius: '4px',
           margin: '0 2px',
           fontFamily: 'monospace',
+          fontSize: '0.9em',
+          color: '#595959ff',
         }}
       >
         {group}
@@ -34,13 +36,13 @@ function formatHostIP(ip) {
     // Wrap groups in colored boxes
     return (
       <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-        <Box sx={{ display: 'inline-flex', backgroundColor: '#aaa', border: '2px solid #aaa', borderRadius: '4px', padding: '4px', marginRight: '4px' }}>
+        <Box sx={{ display: 'inline-flex', backgroundColor: '#d2d2d2ff', border: '2px solid #aaa', padding: '2px 0px', borderRadius: '4px', marginRight: '4px' }}>
           {groups.slice(0, 3)}
         </Box>
-        <Box sx={{ display: 'inline-flex', border: '2px solid blue', borderRadius: '4px', padding: '4px', marginRight: '4px' }}>
+        <Box sx={{ display: 'inline-flex', border: '2px solid rgb(130, 176, 223)', padding: '2px 0px', borderRadius: '4px', marginRight: '4px' }}>
           {groups.slice(3, 4)}
         </Box>
-        <Box sx={{ display: 'inline-flex', border: '2px solid green', borderRadius: '4px', padding: '4px' }}>
+        <Box sx={{ display: 'inline-flex', border: '2px solid #2fad48ff', padding: '2px 0px', borderRadius: '4px' }}>
           {groups.slice(4)}
         </Box>
       </Box>
@@ -275,20 +277,22 @@ function Hosts() {
               </Box>
               {error && <Typography color="danger" mb={2}>{error}</Typography>}
               <Table>
-                {hosts.map((host, idx) => (
-                  <tr
-                    key={host.name + host.ip + idx}
-                    style={{
-                      cursor: 'pointer',
-                      background: selectedHost === host.name ? '#f0f4ff' : undefined
-                    }}
-                    onClick={() => setSelectedHost(host.name)}
-                  >
-                    <td width="150"><b>{host.name}</b></td>
-                    <td>{formatHostIP(host.ip)}</td>
-                    <td>{host.tags && host.tags.join(', ')}</td>
-                  </tr>
-                ))}
+                <tbody>
+                  {hosts.map((host, idx) => (
+                    <tr
+                      key={host.name + host.ip + idx}
+                      style={{
+                        cursor: 'pointer',
+                        background: selectedHost === host.name ? '#f0f4ff' : undefined
+                      }}
+                      onClick={() => setSelectedHost(host.name)}
+                    >
+                      <td width="150"><b>{host.name}</b></td>
+                      <td>{formatHostIP(host.ip)}</td>
+                      <td>{host.tags && host.tags.join(', ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </Table>
             </Box>
           </Box>

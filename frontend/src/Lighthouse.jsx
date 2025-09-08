@@ -46,10 +46,10 @@ export default function Lighthouse() {
               Some config or certs are missing in data/lighthouse.
             </Alert>
           )}
-          <Table><tr><td>External IP:</td><td>{config?.external_ip ?? '[Missing external IP]'}</td></tr>
+          <Table><tbody><tr><td>External IP:</td><td>{config?.external_ip ?? '[Missing external IP]'}</td></tr>
             <tr><td>Port:</td><td>{config?.port ?? '[Missing port]'}</td></tr>
             <tr><td>Internal IP:</td><td>{config?.internal_ip ?? '[Missing internal IP]'}</td></tr>
-          </Table>
+          </tbody></Table>
 
           <Typography level="body-lg" mt={2} mb={1}>Config file (config.yaml):</Typography>
           <pre style={{ background: '#f4f4f4', padding: 16, borderRadius: 4, overflowX: 'auto' }}>
