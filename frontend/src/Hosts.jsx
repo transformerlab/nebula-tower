@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
-import { Box, Button, Typography, Sheet, List, ListItemButton, ListItemContent, Input, Table, Modal, ModalDialog, ModalClose, ListItemDecorator } from '@mui/joy';
+import { IconButton, Box, Button, Typography, Sheet, List, ListItemButton, ListItemContent, Input, Table, Modal, ModalDialog, ModalClose, ListItemDecorator } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
 import { useAuthedFetcher } from './lib/api';
 import HostDetailsModal from './HostDetailsModal';
+import { BuildingIcon, TicketIcon, PlusCircleIcon } from 'lucide-react';
 
 
 function formatHostIP(ip) {
@@ -170,7 +171,7 @@ function Hosts() {
   return (
     <Sheet sx={{ minWidth: 700, mx: 'auto', p: 2, display: 'flex', flexDirection: 'row', gap: 2 }}>
       <Sheet sx={{ width: '230px', height: '100%', flexShrink: 0 }} >
-        <Typography level="h3" mb={2}>Subnet</Typography>
+        <Typography level="h3" mb={2} sx={{ height: '40px' }}>Subnet</Typography>
         <List sx={{ mb: 1 }}>
           {orgs.map(org => (
             <ListItemButton
@@ -182,7 +183,7 @@ function Hosts() {
               }}
               onClick={() => setSelectedOrg(org.name)}
             >
-              <ListItemDecorator>🏢</ListItemDecorator>
+              <ListItemDecorator><BuildingIcon /></ListItemDecorator>
               <ListItemContent>
                 <span>{org.name}</span>
                 <Typography level="body2" color="neutral" sx={{ fontSize: '11px' }} noWrap>
@@ -199,13 +200,13 @@ function Hosts() {
             onChange={e => setNewOrgName(e.target.value)}
             disabled={orgCreateLoading}
           />
-          <Button
+          <IconButton
             onClick={handleCreateOrg}
             loading={orgCreateLoading}
-            variant="soft"
+            variant="plain"
           >
-            +
-          </Button>
+            <PlusCircleIcon />
+          </IconButton>
         </Box>
         {orgCreateError && <Typography color="danger" mb={2}>{orgCreateError}</Typography>}
 
@@ -216,16 +217,15 @@ function Hosts() {
         {selectedOrg && (
           <Box sx={{ display: 'flex', gap: 4 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography level="h3">
-                Hosts in <b>{selectedOrg}</b>
-
-              </Typography>
-
-              <Typography level="body2" color="neutral" fontSize="sm" mb={2} >
-                Subnet: {selectedOrgSubnet ? selectedOrgSubnet : 'create your first host first'}
-              </Typography>
-
-              <Button onClick={handleGenerateInvite} loading={inviteLoading} sx={{ mb: 1 }}>Generate Invite Code</Button>
+              <Box sx={{ height: '40px' }} mb={3}>
+                <Typography level="h3">
+                  Hosts in <b>{selectedOrg}</b>
+                </Typography>
+                <Typography level="body2" color="neutral" fontSize="sm" >
+                  Subnet: {selectedOrgSubnet ? selectedOrgSubnet : 'create your first host first'}
+                </Typography>
+              </Box>
+              <Button onClick={handleGenerateInvite} loading={inviteLoading} sx={{ mb: 1 }} startDecorator={<TicketIcon />} variant="soft">Generate Invite Code</Button>
               {/* Invite Code Modal */}
               <Modal open={inviteModalOpen} onClose={() => { setInviteModalOpen(false); setInviteError(''); setInviteCode(''); setCopied(false); }}>
                 <ModalDialog sx={{ minWidth: 400 }}>
@@ -296,7 +296,7 @@ function Hosts() {
       </Sheet>
       {/* Host Details Modal */}
       <HostDetailsModal selectedHost={selectedHost} selectedOrg={selectedOrg} onClose={() => setSelectedHost(null)} />
-    </Sheet>
+    </Sheet >
   );
 }
 
