@@ -47,19 +47,14 @@ export default function Cert() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetcher(`/admin/api/ca`, {
+      await fetcher(`/admin/api/ca`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: orgName })
       });
-      if (res.ok) {
-        setOrgName('');
-        mutate(`${API_BASE_URL}/admin/api/ca`);
-        mutate(`${API_BASE_URL}/admin/api/ca/info`);
-      } else {
-        const err = await res.json();
-        setError(err.detail || 'Failed to create CA cert.');
-      }
+      setOrgName('');
+      mutate(`${API_BASE_URL}/admin/api/ca`);
+      mutate(`${API_BASE_URL}/admin/api/ca/info`);
     } catch {
       setError('Failed to create CA cert.');
     }

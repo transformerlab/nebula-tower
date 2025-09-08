@@ -106,8 +106,6 @@ function Hosts() {
           tags: tags.split(',').map(t => t.trim()).filter(Boolean)
         })
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || 'Failed to add host');
       mutate(`${API_BASE_URL}/admin/api/orgs/${encodeURIComponent(selectedOrg)}/hosts`);
       setName('');
       setTags('');
@@ -131,8 +129,6 @@ function Hosts() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newOrgName.trim() })
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || 'Failed to create org');
       setNewOrgName('');
       mutate(`${API_BASE_URL}/admin/api/orgs`);
     } catch (e) {
@@ -158,8 +154,7 @@ function Hosts() {
         headers: { 'Content-Type': 'application/json' }
         // No body needed, org is passed as query param
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || 'Failed to generate invite');
+      const data = await resp;
       setInviteCode(data.invite.code);
       setInviteModalOpen(true);
     } catch (e) {
