@@ -81,7 +81,7 @@ go to `cd client/nebula-tower-menubar-app-tyne`
 
 ### Build for production:
 
-`./build.sh'`
+`./build.sh`
 
 # Repo Organization:
 
