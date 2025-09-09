@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Typography, Box, Button, Modal, ModalDialog, ModalClose, Input } from '@mui/joy';
+import { useState } from 'react';
+import { Typography, Box, Button, Modal, ModalDialog, ModalClose, Input, Divider } from '@mui/joy';
 import API_BASE_URL from '../apiConfig';
 import { useAuthedFetcher } from '../lib/api';
 
@@ -9,37 +9,37 @@ function GenerateInviteModal({ open, onClose, selectedOrg }) {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState('');
     const [copied, setCopied] = useState(false);
+    const [numberOfUses, setNumberOfUses] = useState(1);
+    const [daysValid, setDaysValid] = useState(7);
 
-    // Generate invite when modal opens if selectedOrg exists
-    useEffect(() => {
-        const generateInvite = async () => {
-            setInviteLoading(true);
-            setInviteError('');
-            setInviteCode('');
-            if (!selectedOrg) {
-                setInviteError('Please select a subnet first.');
-                setInviteLoading(false);
-                return;
-            }
-            try {
-                const resp = await fetcher(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                    // No body needed, org is passed as query param
-                });
-                const data = await resp;
-                setInviteCode(data.invite.code);
-            } catch (e) {
-                setInviteError(e.message);
-            } finally {
-                setInviteLoading(false);
-            }
-        };
-
-        if (open && selectedOrg) {
-            generateInvite();
+    const generateInvite = async () => {
+        setInviteLoading(true);
+        setInviteError('');
+        setInviteCode('');
+        if (!selectedOrg) {
+            setInviteError('Please select a subnet first.');
+            setInviteLoading(false);
+            return;
         }
-    }, [open, selectedOrg]);
+        try {
+            const resp = await fetcher(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}&days_valid=${daysValid}&number_of_uses=${numberOfUses}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await resp;
+            setInviteCode(data.invite.code);
+        } catch (e) {
+            setInviteError(e.message);
+        } finally {
+            setInviteLoading(false);
+        }
+    };
+
+    const handleCreate = () => {
+        if (!selectedOrg || !open) return;
+        generateInvite();
+    }
+
 
     const handleClose = () => {
         setInviteError('');
@@ -52,11 +52,54 @@ function GenerateInviteModal({ open, onClose, selectedOrg }) {
         <Modal open={open} onClose={handleClose}>
             <ModalDialog sx={{ minWidth: 400 }}>
                 <ModalClose />
-                <Typography level="h2" mb={2}>Invite Code</Typography>
+                <Typography level="h2" mb={1}>Invite Code</Typography>
+                <Typography level="body2" color="neutral">
+                    Create a Code for <b>{selectedOrg}</b> that can be used
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    <Input
+                        type="number"
+                        value={numberOfUses}
+                        onChange={(e) => setNumberOfUses(Math.max(1, parseInt(e.target.value) || 1))}
+                        inputProps={{ min: 1 }}
+                        sx={{ width: 80, mr: 1 }}
+                    />
+                    <Typography level="body2" color="neutral">
+                        time{numberOfUses > 1 ? 's' : ''}
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
+                    <Typography level="body2" color="neutral">
+                        and will expire in
+                    </Typography>
+                    <Input
+                        type="number"
+                        value={daysValid}
+                        onChange={(e) => setDaysValid(Math.max(1, parseInt(e.target.value) || 1))}
+                        inputProps={{ min: 1 }}
+                        sx={{ width: 80, mx: 1 }}
+                    />
+                    <Typography level="body2" color="neutral">
+                        days
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex' }}>
+                    <Button
+                        onClick={() => {
+                            handleCreate();
+                        }}
+                        variant="outlined"
+                        color="primary"
+                        disabled={inviteLoading}
+                    >
+                        Generate
+                    </Button>
+                </Box>
+                <Divider mb={8} />
                 {inviteLoading && <Typography>Generating...</Typography>}
                 {inviteError && <Typography color="danger">{inviteError}</Typography>}
                 {inviteCode && typeof inviteCode === 'string' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Input
                             value={inviteCode}
                             readOnly
@@ -76,31 +119,11 @@ function GenerateInviteModal({ open, onClose, selectedOrg }) {
                         </Button>
                     </Box>
                 )}
-                {/* Defensive fallback if inviteCode is an object */}
                 {inviteCode && typeof inviteCode !== 'string' && (
-                    <Box sx={{ mb: 2 }}>
+                    <Box sx={{ mb: 1 }}>
                         <Typography color="danger">Invalid invite code format</Typography>
                     </Box>
                 )}
-                <Typography level="body2" color="neutral">
-                    Copy this code and share it with the client to create a host in <b>{selectedOrg}</b>.
-                </Typography>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                    <Button
-                        onClick={() => {
-                            // This will trigger the useEffect since we're a dependency on 'open'
-                            setCopied(false);
-                            setInviteCode('');
-                            setInviteError('');
-                        }}
-                        variant="outlined"
-                        color="primary"
-                        disabled={inviteLoading}
-                    >
-                        Regenerate
-                    </Button>
-                    <Button onClick={handleClose} variant="outlined">Close</Button>
-                </Box>
             </ModalDialog>
         </Modal>
     );
