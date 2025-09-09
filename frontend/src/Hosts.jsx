@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import ip6 from 'ip6'; // Import the ip6 library
-import { IconButton, Box, Button, Typography, Sheet, List, ListItemButton, ListItemContent, Input, Table, Modal, ModalDialog, ModalClose, ListItemDecorator } from '@mui/joy';
+import { IconButton, Box, Button, Typography, Sheet, List, ListItemButton, ListItemContent, Input, Table, ListItemDecorator } from '@mui/joy';
 import API_BASE_URL from './apiConfig';
 import { useAuthedFetcher } from './lib/api';
 import HostDetailsModal from './HostDetailsModal';
+import GenerateInviteModal from './components/GenerateInviteModal';
 import { BuildingIcon, TicketIcon, PlusCircleIcon } from 'lucide-react';
 
 
@@ -66,10 +67,6 @@ function Hosts() {
   const [orgCreateError, setOrgCreateError] = useState('');
   const [orgCreateLoading, setOrgCreateLoading] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState('');
-  const [copied, setCopied] = useState(false);
 
   // SWR for orgs
   const { data: orgsData } = useSWR(
@@ -97,7 +94,7 @@ function Hosts() {
     }
     setLoading(true);
     try {
-      const resp = await fetcher(`/admin/api/hosts/new`, {
+      await fetcher(`/admin/api/hosts/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -124,7 +121,7 @@ function Hosts() {
     }
     setOrgCreateLoading(true);
     try {
-      const resp = await fetcher(`/admin/api/orgs/new`, {
+      await fetcher(`/admin/api/orgs/new`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newOrgName.trim() })
@@ -138,31 +135,12 @@ function Hosts() {
     }
   };
 
-  const handleGenerateInvite = async () => {
-    setInviteLoading(true);
-    setInviteError('');
-    setInviteCode('');
+  const handleGenerateInvite = () => {
     if (!selectedOrg) {
-      setInviteError('Please select a subnet first.');
-      setInviteModalOpen(true);
-      setInviteLoading(false);
+      alert('Please select a subnet first.');
       return;
     }
-    try {
-      const resp = await fetcher(`/admin/api/invites/generate?org=${encodeURIComponent(selectedOrg)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-        // No body needed, org is passed as query param
-      });
-      const data = await resp;
-      setInviteCode(data.invite.code);
-      setInviteModalOpen(true);
-    } catch (e) {
-      setInviteError(e.message);
-      setInviteModalOpen(true);
-    } finally {
-      setInviteLoading(false);
-    }
+    setInviteModalOpen(true);
   };
 
   return (
@@ -222,49 +200,13 @@ function Hosts() {
                   Subnet: {selectedOrgSubnet ? selectedOrgSubnet : 'create your first host first'}
                 </Typography>
               </Box>
-              <Button onClick={handleGenerateInvite} loading={inviteLoading} sx={{ mb: 1 }} startDecorator={<TicketIcon />} variant="soft">Generate Invite Code</Button>
+              <Button onClick={handleGenerateInvite} sx={{ mb: 1 }} startDecorator={<TicketIcon />} variant="soft">Generate Invite Code</Button>
               {/* Invite Code Modal */}
-              <Modal open={inviteModalOpen} onClose={() => { setInviteModalOpen(false); setInviteError(''); setInviteCode(''); setCopied(false); }}>
-                <ModalDialog sx={{ minWidth: 400 }}>
-                  <ModalClose />
-                  <Typography level="h2" mb={2}>Invite Code</Typography>
-                  {inviteLoading && <Typography>Generating...</Typography>}
-                  {inviteError && <Typography color="danger">{inviteError}</Typography>}
-                  {inviteCode && typeof inviteCode === 'string' && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Input
-                        value={inviteCode}
-                        readOnly
-                        sx={{ flex: 1, fontFamily: 'monospace', fontWeight: 'bold', fontSize: 16, mr: 1 }}
-                      />
-                      <Button
-                        variant="soft"
-                        color={copied ? "success" : "neutral"}
-                        onClick={() => {
-                          navigator.clipboard.writeText(inviteCode);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 1200);
-                        }}
-                        sx={{ minWidth: 40, px: 1 }}
-                      >
-                        copy
-                      </Button>
-                    </Box>
-                  )}
-                  {/* Defensive fallback if inviteCode is an object */}
-                  {inviteCode && typeof inviteCode !== 'string' && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography color="danger">Invalid invite code format</Typography>
-                    </Box>
-                  )}
-                  <Typography level="body2" color="neutral">
-                    Copy this code and share it with the client to create a host in <b>{selectedOrg}</b>.
-                  </Typography>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                    <Button onClick={() => { setInviteModalOpen(false); setInviteError(''); setInviteCode(''); setCopied(false); }} variant="outlined">Close</Button>
-                  </Box>
-                </ModalDialog>
-              </Modal>
+              <GenerateInviteModal
+                open={inviteModalOpen}
+                onClose={() => setInviteModalOpen(false)}
+                selectedOrg={selectedOrg}
+              />
               <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
                 <Input placeholder="Host Name" value={name} onChange={e => setName(e.target.value)} />
                 <Input placeholder="Tags (comma separated)" value={tags} onChange={e => setTags(e.target.value)} />
