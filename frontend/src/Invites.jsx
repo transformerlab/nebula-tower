@@ -6,7 +6,7 @@ import {
   Table, Switch, FormControl, FormLabel, Stack, IconButton, Chip
 } from '@mui/joy';
 import { useAuthedFetcher } from './lib/api';
-import { EyeIcon, EyeOffIcon, TicketIcon } from 'lucide-react'
+import { EyeIcon, EyeOffIcon, TicketIcon, Trash2Icon } from 'lucide-react'
 
 export default function Invites() {
   const fetcher = useAuthedFetcher();
@@ -29,6 +29,18 @@ export default function Invites() {
       ...prev,
       [code]: !prev[code]
     }));
+  };
+
+  // Function to handle invite deletion
+  const handleDeleteInvite = async (code) => {
+    try {
+      await fetcher(`${API_BASE_URL}/admin/api/invites/${code}`, {
+        method: 'DELETE'
+      });
+      mutate(`${API_BASE_URL}/admin/api/invites`); // Refresh the invites list
+    } catch (error) {
+      console.error('Failed to delete invite:', error);
+    }
   };
 
   // Filtered invites
@@ -75,6 +87,8 @@ export default function Invites() {
                   <th>Expires</th>
                   <th>Code</th>
                   <th>Active</th>
+                  <th>Available Uses</th>
+                  <th>&nbsp;</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +124,8 @@ export default function Invites() {
                           <Chip color="danger">Inactive</Chip>
                         )}
                       </td>
+                      <td>{invite.available_uses}</td>
+                      <td><IconButton onClick={() => handleDeleteInvite(invite.code)}><Trash2Icon /></IconButton></td>
                     </tr>
                   );
                 })}

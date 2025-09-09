@@ -23,6 +23,7 @@ class Invite(BaseModel):
     org: str
     expires_at: str
     code: str
+    available_uses: int = 1  # Default to 1 if not specified
 
 class InvitesResponse(BaseModel):
     invites: List[Invite]
@@ -52,7 +53,8 @@ def get_invites(org: str = None, active: bool = None):
                             org=item.get('org'),
                             expires_at=date_str,
                             active=item.get('active'),
-                            code=item.get('code')
+                            code=item.get('code'),
+                            available_uses=item.get('available_uses', 1)
                         )
                     )
                 return InvitesResponse(invites=filtered_invites)
@@ -65,7 +67,7 @@ def get_invites(org: str = None, active: bool = None):
 # (it creates the file if missing). And in each invite, you have a randomized code
 # with high entropy, an org, and a date when it expires
 @router.post("/api/invites/generate")
-async def generate_invite(org: str, days_valid: int = 7):
+async def generate_invite(org: str, days_valid: int = 7, uses: int = 1):
     org = sanitize_string(org)
 
     if not os.path.exists(ORGS_DIR):
@@ -74,13 +76,19 @@ async def generate_invite(org: str, days_valid: int = 7):
     org_dir = os.path.join(ORGS_DIR, org)
     if not os.path.isdir(org_dir):
         raise HTTPException(status_code=404, detail=f"Org '{org}' not found")
+    
+    if (days_valid <= 0):
+        raise HTTPException(status_code=400, detail="days_valid must be a positive integer")
+    if (uses < 1):
+        raise HTTPException(status_code=400, detail="uses must be a positive integer")
 
     invite_code = generate_random_code()
     invite = {
         "code": invite_code,
         "org": org,
         "expires_at": datetime.utcnow() + timedelta(days=days_valid),
-        "active": True  # Set active True by default
+        "active": True,  # Set active True by default
+        "available_uses": uses
     }
 
     invites_file = os.path.join(DATA_DIR, "invites.yaml")
@@ -114,3 +122,26 @@ def sanitize_string(s):
         return ""
     sanitized = re.sub(r'[^a-zA-Z0-9]', '', s.lower())
     return sanitized
+
+
+# Mark Invite as Inactive
+@router.delete("/api/invites/{code}")
+async def deactivate_invite(code: str):
+    if not os.path.exists(INVITES_FILE):
+        raise HTTPException(status_code=404, detail="Invites file does not exist")
+    try:
+        with open(INVITES_FILE, 'r') as f:
+            invites = yaml.safe_load(f) or []
+        invite_found = False
+        for invite in invites:
+            if invite.get('code') == code:
+                invite['active'] = False
+                invite_found = True
+                break
+        if not invite_found:
+            raise HTTPException(status_code=404, detail="Invite code not found")
+        with open(INVITES_FILE, 'w') as f:
+            yaml.safe_dump(invites, f)
+        return {"detail": "Invite marked as inactive successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

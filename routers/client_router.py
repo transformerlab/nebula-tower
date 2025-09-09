@@ -79,7 +79,9 @@ async def create_host_using_invite(request: Request):
     # Mark invite as inactive
     for i in invites:
         if i.get("code") == invite_code:
-            i["active"] = False
+            i["available_uses"] = i.get("available_uses", 1) - 1
+            if i["available_uses"] <= 0:
+                i["active"] = False
     save_yaml(invites_file, invites)
 
     returned_name = result["name"]
